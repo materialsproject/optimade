@@ -31,6 +31,7 @@ class TestSetup(unittest.TestCase):
             present = {
                 r"\.lark": False,
                 r"index_links\.json": False,
+                r"cors_providers\.json": False,
                 r"test_structures\.json": False,
                 r"test_references\.json": False,
                 r"test_links\.json": False,

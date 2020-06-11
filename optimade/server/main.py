@@ -106,8 +106,15 @@ def update_schema(app: FastAPI):
     package_root = Path(__file__).parent.parent.parent.resolve()
     if not package_root.joinpath("openapi").exists():
         os.mkdir(package_root.joinpath("openapi"))
+
+    # add list of servers to openapi spec
+    openapi = app.openapi()
+    with open(CONFIG.cors_providers_path) as f:
+        config_providers = json.load(f)
+
+    openapi.update(config_providers)
     with open(package_root.joinpath("openapi/local_openapi.json"), "w") as f:
-        json.dump(app.openapi(), f, indent=2)
+        json.dump(openapi, f, indent=2)
 
 
 @app.on_event("startup")

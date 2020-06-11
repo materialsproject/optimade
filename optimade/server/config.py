@@ -3,6 +3,7 @@ import json
 import logging
 from typing import Optional, Dict, List
 
+
 try:
     from typing import Literal
 except ImportError:
@@ -108,6 +109,11 @@ class ServerConfig(BaseSettings):
     index_links_path: Path = Field(
         Path(__file__).parent.joinpath("index_links.json"),
         description="Absolute path to a JSON file containing the MongoDB collection of /links resources for the index meta-database",
+    )
+
+    cors_providers_path: Path = Field(
+        Path(__file__).parent.joinpath("cors_providers.json"),
+        description="Absolute path to a JSON file containing a list of providers to add to the openapi.json file.",
     )
 
     @root_validator(pre=True)
