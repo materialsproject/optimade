@@ -387,7 +387,46 @@ class ImplementationValidator:
                 optional=optional,
             )
 
+        self._test_unknown_provider_property(endp)
+        self._test_completely_unknown_property(endp)
+
         return True, f"successfully recursed through endpoint {endp}."
+
+    @test_case
+    def _test_completely_unknown_property(self, endp):
+        request = f"{endp}?filter=crazyfield = 2"
+        response, _ = self._get_endpoint(
+            request,
+            expected_status_code=400,
+        )
+
+        return True, "unknown field returned 400 Bad Request, as expected"
+
+    @test_case
+    def _test_unknown_provider_property(self, endp):
+
+        dummy_provider_field = "_crazyprovider_field"
+
+        request = f"{endp}?filter={dummy_provider_field}=2"
+        response, _ = self._get_endpoint(
+            request,
+            multistage=True,
+            request=request,
+        )
+
+        if response is not None:
+            deserialized, _ = self._deserialize_response(
+                response, CONF.response_classes[endp], request=request, multistage=True
+            )
+
+            return (
+                True,
+                "Unknown provider field was ignored when filtering, as expected",
+            )
+
+        raise ResponseError(
+            "Failed to handle field from unknown provider; should return without affecting filter results"
+        )
 
     def _check_entry_info(self, entry_info: Dict[str, Any], endp: str) -> List[str]:
         """Checks that `entry_info` contains all the required properties,
