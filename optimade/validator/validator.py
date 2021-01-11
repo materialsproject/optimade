@@ -37,7 +37,7 @@ from optimade.validator.utils import (
 
 from optimade.validator.config import VALIDATOR_CONFIG as CONF
 
-VERSIONS_REGEXP = r"/v[0-9]+(\.[0-9]+){,2}"
+VERSIONS_REGEXP = r".*/v[0-9]+(\.[0-9]+){,2}$"
 
 __all__ = ("ImplementationValidator",)
 
@@ -211,7 +211,7 @@ class ImplementationValidator:
             print(
                 "There were internal validator failures associated with this run.\n"
                 "If this problem persists, please report it at:\n"
-                "https://github.com/Materials-Consortia/optimade-python-tools/issues/new.\n"
+                "https://github.com/Materials-Consortia/optimade-python-tools/issues/new\n"
             )
 
             for message in self.results.internal_failure_messages:
@@ -261,17 +261,25 @@ class ImplementationValidator:
         self._log.debug("Testing base info endpoint of %s", info_endp)
 
         # Get and validate base info to find endpoints
+        # If this is not possible, then exit at this stage
         base_info = self._test_info_or_links_endpoint(info_endp)
         if not base_info:
-            raise RuntimeError(
-                "Unable to deserialize base info (see previous errors), so cannot continue."
+            self._log.critical(
+                f"Unable to deserialize response from introspective {info_endp!r} endpoint. "
+                "This is required for all further validation, so the validator will now exit."
             )
+            self.print_summary()
+            # Set valid to False to ensure error code 1 is raised at CLI
+            self.valid = False
+            return
 
-        self.provider_prefix = (
-            base_info.dict()["meta"].get("provider", {}).get("prefix")
-        )
+        # Grab the provider prefix from base info and use it when looking for provider fields
+        self.provider_prefix = None
+        meta = base_info.get("meta", {})
+        if meta.get("provider") is not None:
+            self.provider_prefix = meta["provider"].get("prefix")
 
-        # Set the response class for all `/info/entry` endpoints
+        # Set the response class for all `/info/entry` endpoints based on `/info` response
         self.available_json_endpoints, _ = self._get_available_endpoints(base_info)
         for endp in self.available_json_endpoints:
             self._response_classes[f"{info_endp}/{endp}"] = EntryInfoResponse
@@ -282,12 +290,14 @@ class ImplementationValidator:
         self._test_bad_version_returns_553()
 
         # Test that entry info endpoints deserialize correctly
+        # If they do not, the corresponding entry in _entry_info_by_type
+        # is set to False, which must be checked for further validation
         for endp in self.available_json_endpoints:
             entry_info_endpoint = f"{info_endp}/{endp}"
             self._log.debug("Testing expected info endpoint %s", entry_info_endpoint)
-            entry_info = self._test_info_or_links_endpoint(entry_info_endpoint)
-            if entry_info:
-                self._entry_info_by_type[endp] = entry_info.dict()
+            self._entry_info_by_type[endp] = self._test_info_or_links_endpoint(
+                entry_info_endpoint
+            )
 
         # Use the _entry_info_by_type to construct filters on the relevant endpoints
         if not self.minimal:
@@ -334,20 +344,22 @@ class ImplementationValidator:
 
         """
         entry_info = self._entry_info_by_type.get(endp)
+
+        if not entry_info:
+            raise ResponseError(
+                f"Unable to generate filters for endpoint {endp}: 'info/{endp}' response was malformed."
+            )
+
         _impl_properties = self._check_entry_info(entry_info, endp)
         prop_list = list(_impl_properties.keys())
 
         self._check_response_fields(endp, prop_list)
         chosen_entry, _ = self._get_archetypal_entry(endp, prop_list)
 
-        if not entry_info:
-            raise ResponseError(
-                f"Unable to generate filters for endpoint {endp}: entry info not found."
-            )
-
         if not chosen_entry:
-            raise ResponseError(
-                f"Unable to generate filters for endpoint {endp}: no valid entries found."
+            return (
+                None,
+                f"Unable to generate filters for endpoint {endp}: no valid entries found.",
             )
 
         for prop in _impl_properties:
@@ -387,7 +399,7 @@ class ImplementationValidator:
             The list of property names supported by this implementation.
 
         """
-        properties = entry_info["data"]["properties"]
+        properties = entry_info.get("data", {}).get("properties", [])
         self._test_must_properties(
             properties, endp, request="; checking entry info for required properties"
         )
@@ -481,17 +493,16 @@ class ImplementationValidator:
             returned_fields -= CONF.top_level_non_attribute_fields
 
             if expected_fields != returned_fields:
-                raise RuntimeError(
-                    f"Response fields not obeyed by {endp!r}:\n{expected_fields}\n{returned_fields}"
+                raise ResponseError(
+                    f"Response fields not obeyed by {endp!r}:\nExpected: {expected_fields}\nReturned: {returned_fields}"
                 )
 
             return True, "Successfully limited response fields"
 
-        else:
-            return (
-                None,
-                f"Unable to test adherence to response fields as no entries were returned for endpoint {endp!r}.",
-            )
+        return (
+            None,
+            f"Unable to test adherence to response fields as no entries were returned for endpoint {endp!r}.",
+        )
 
     @test_case
     def _construct_queries_for_property(
@@ -636,9 +647,9 @@ class ImplementationValidator:
 
         """
         if prop == "id":
-            test_value = chosen_entry["id"]
+            test_value = chosen_entry.get("id")
         else:
-            test_value = chosen_entry["attributes"].get(prop, "_missing")
+            test_value = chosen_entry.get("attributes", {}).get(prop, "_missing")
 
         if test_value in ("_missing", None):
             support = CONF.entry_schemas[endp].get(prop, {}).get("support")
@@ -778,7 +789,7 @@ class ImplementationValidator:
 
         return True, f"{prop} passed filter tests"
 
-    def _test_info_or_links_endpoint(self, request_str: str) -> Union[bool, Any]:
+    def _test_info_or_links_endpoint(self, request_str: str) -> Union[bool, dict]:
         """Requests an info or links endpoint and attempts to deserialize
         the response.
 
@@ -797,9 +808,8 @@ class ImplementationValidator:
                 self._response_classes[request_str],
                 request=request_str,
             )
-            if not deserialized:
-                return response
-            return deserialized
+            if deserialized:
+                return deserialized.dict()
 
         return False
 
@@ -912,18 +922,24 @@ class ImplementationValidator:
         for versioned base URLs.
 
         """
-        expected_status_code = 200
+
+        # First, check that there is a versions endpoint in the appropriate place:
+        # If passed a versioned URL, then strip that version from
+        # the URL before looking for `/versions`.
         if re.match(VERSIONS_REGEXP, self.base_url_parsed.path) is not None:
-            expected_status_code = 404
+            self.client.base_url = "/".join(self.client.base_url.split("/")[:-1])
 
         response, _ = self._get_endpoint(
-            CONF.versions_endpoint, expected_status_code=expected_status_code
+            CONF.versions_endpoint, expected_status_code=200
         )
 
-        if expected_status_code == 200:
-            self._test_versions_endpoint_content(
-                response, request=CONF.versions_endpoint
-            )
+        self._test_versions_endpoint_content(response, request=CONF.versions_endpoint)
+
+        # If passed a versioned URL, first reset the URL of the client to the
+        # versioned one, then that this versioned URL does NOT host a versions endpoint
+        if re.match(VERSIONS_REGEXP, self.base_url_parsed.path) is not None:
+            self.client.base_url = self.base_url
+            self._get_endpoint(CONF.versions_endpoint, expected_status_code=404)
 
     @test_case
     def _test_versions_endpoint_content(
@@ -995,9 +1011,11 @@ class ImplementationValidator:
         """
         expected_status_code = 553
         if re.match(VERSIONS_REGEXP, self.base_url_parsed.path) is not None:
-            expected_status_code = 404
+            expected_status_code = [404, 400]
 
-        self._get_endpoint("v123123", expected_status_code=expected_status_code)
+        self._get_endpoint(
+            "v123123", expected_status_code=expected_status_code, optional=True
+        )
 
     @test_case
     def _test_page_limit(
@@ -1082,9 +1100,10 @@ class ImplementationValidator:
                 deserialized.data[0].id,
             )
         else:
-            raise ResponseError(
+            return (
+                None,
                 "No entries found under endpoint to scrape ID from. "
-                "This may be caused by previous errors, if e.g. the endpoint failed deserialization."
+                "This may be caused by previous errors, if e.g. the endpoint failed deserialization.",
             )
         return (
             self._test_id_by_type[deserialized.data[0].type],
@@ -1143,25 +1162,8 @@ class ImplementationValidator:
 
         """
         for _ in [0]:
-            available_json_entry_endpoints = []
             try:
-                available_json_entry_endpoints = (
-                    base_info.data.attributes.entry_types_by_format.get("json")
-                )
-                break
-            except Exception:
-                self._log.warning(
-                    "Info endpoint failed serialization, trying to manually extract entry_types_by_format."
-                )
-
-            if not base_info.json():
-                raise ResponseError(
-                    "Unable to get entry types from base info endpoint. "
-                    "This may most likely be attributed to a wrong request to the info endpoint."
-                )
-
-            try:
-                available_json_entry_endpoints = base_info.json()["data"]["attributes"][
+                available_json_entry_endpoints = base_info["data"]["attributes"][
                     "entry_types_by_format"
                 ]["json"]
                 break
@@ -1216,9 +1218,12 @@ class ImplementationValidator:
 
         if response.status_code not in expected_status_code:
             message = f"Request to '{request_str}' returned HTTP code {response.status_code} and not expected {expected_status_code}."
-            message += "\nError(s):"
-            for error in response.json().get("errors", []):
-                message += f'\n  {error.get("title", "N/A")}: {error.get("detail", "N/A")} ({error.get("source", {}).get("pointer", "N/A")})'
+            message += "\nAdditional details:"
+            try:
+                for error in response.json().get("errors", []):
+                    message += f'\n  {error.get("title", "N/A")}: {error.get("detail", "N/A")} ({error.get("source", {}).get("pointer", "N/A")})'
+            except json.JSONDecodeError:
+                message += f"\n  Could not parse response as JSON. Content type was {response.headers.get('content-type')!r}."
             raise ResponseError(message)
 
         return response, f"received expected response: {response}."

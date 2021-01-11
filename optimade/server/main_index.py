@@ -36,6 +36,7 @@ if CONFIG.debug:  # pragma: no cover
 
 
 app = FastAPI(
+    root_path=CONFIG.root_path,
     title="OPTIMADE API - Index meta-database",
     description=(
         f"""The [Open Databases Integration for Materials Design (OPTIMADE) consortium](https://www.optimade.org/) aims to make materials databases interoperational by developing a common REST API.

@@ -74,7 +74,7 @@ class EntryResourceAttributes(Attributes):
         queryable=SupportLevel.MUST,
     )
 
-    last_modified: datetime = OptimadeField(
+    last_modified: Optional[datetime] = OptimadeField(
         ...,
         description="""Date and time representing when the entry was last modified.
 

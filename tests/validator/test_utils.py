@@ -164,17 +164,14 @@ def test_expected_failure_test_case():
     assert validator.results.internal_failure_count == 0
 
     assert output[0] is None
-    assert (
-        output[1]
-        == "Critical: unable to parse server response as JSON. JSONDecodeError: Dummy JSON error: line 1 column 1 (char 0)"
-    )
+    assert output[1] == "JSONDecodeError: Dummy JSON error: line 1 column 1 (char 0)"
     assert (
         validator.results.optional_failure_messages[-1][0]
         == "http://example.org/test_request - dummy_test_case - failed with error"
     )
     assert (
         validator.results.optional_failure_messages[-1][1]
-        == "Critical: unable to parse server response as JSON. JSONDecodeError: Dummy JSON error: line 1 column 1 (char 0)"
+        == "JSONDecodeError: Dummy JSON error: line 1 column 1 (char 0)"
     )
 
 

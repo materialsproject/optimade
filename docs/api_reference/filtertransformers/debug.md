@@ -1,3 +1,0 @@
-# debug
-
-::: optimade.filtertransformers.debug

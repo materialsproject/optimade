@@ -1,5 +1,12 @@
 #!/bin/bash
 
+if [ -z "$OPTIMADE_CONFIG_FILE" ]; then
+    export OPTIMADE_CONFIG_FILE="./optimade_config.json"
+    echo "Using the demo config file at ${OPTIMADE_CONFIG_FILE}."
+    echo "Set the environment variable OPTIMADE_CONFIG_FILE to override this behaviour."
+    echo "For more configuration options, please see https://www.optimade.org/optimade-python-tools/configuration/."
+fi
+
 export OPTIMADE_LOG_LEVEL=info
 if [ "$1" == "debug" ]; then
     export OPTIMADE_DEBUG=1

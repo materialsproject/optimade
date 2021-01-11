@@ -74,6 +74,14 @@ class ServerConfig(BaseSettings):
         "test_server",
         description="ID of /links endpoint resource for the chosen default OPTIMADE implementation (only relevant for the index meta-database)",
     )
+    root_path: Optional[str] = Field(
+        None,
+        description=(
+            "Sets the FastAPI app `root_path` parameter. This can be used to serve the API under a "
+            "path prefix behind a proxy or as a sub-application of another FastAPI app. "
+            "See https://fastapi.tiangolo.com/advanced/sub-applications/#technical-details-root_path for details."
+        ),
+    )
     base_url: Optional[str] = Field(
         None, description="Base URL for this implementation"
     )

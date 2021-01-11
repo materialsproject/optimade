@@ -37,3 +37,8 @@ class TooManyValues(OptimadeWarning):
 
 class QueryParamNotUsed(OptimadeWarning):
     """A query parameter is not used in this request."""
+
+
+class MissingExpectedField(OptimadeWarning):
+    """A field was provided with a null value when a related field was provided
+    with a value."""

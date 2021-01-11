@@ -1,6 +1,6 @@
 arrange:
     - index.md
-    - install.md
+    - INSTALL.md
     - configuration.md
     - CONTRIBUTING.md
     - use_cases

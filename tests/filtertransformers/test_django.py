@@ -16,12 +16,12 @@ test_data = [
 ]
 
 
-class TestLark2Django:
+class TestDjangoTransformer:
     @pytest.fixture(autouse=True)
     def set_up_class(self):
-        from optimade.filtertransformers.django import Lark2Django
+        from optimade.filtertransformers.django import DjangoTransformer
 
-        self.Transformer = Lark2Django()
+        self.Transformer = DjangoTransformer()
 
     def test_query_conversion(self):
         for raw_q, dj_q in test_data:

@@ -65,9 +65,7 @@ class MongoCollection(EntryCollection):
             MongoTransformer(mapper=resource_mapper),
         )
 
-        self.parser = LarkParser(
-            version=(0, 10, 1), variant="default"
-        )  # The MongoTransformer only supports v0.10.1 as the latest grammar
+        self.parser = LarkParser(version=(1, 0, 0), variant="default")
 
         # check aliases do not clash with mongo operators
         self._check_aliases(self.resource_mapper.all_aliases())

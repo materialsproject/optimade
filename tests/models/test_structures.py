@@ -1,9 +1,11 @@
 # pylint: disable=no-member
 import pytest
+import itertools
 
 from pydantic import ValidationError
 
-from optimade.models.structures import StructureResource
+from optimade.models.structures import StructureResource, CORRELATED_STRUCTURE_FIELDS
+from optimade.server.warnings import MissingExpectedField
 
 
 MAPPER = "StructureMapper"
@@ -19,6 +21,33 @@ def test_good_structures(mapper):
         StructureResource(**mapper(MAPPER).map_back(structure))
 
 
+@pytest.mark.filterwarnings("ignore", category=MissingExpectedField)
+def test_good_structure_with_missing_data(mapper, good_structure):
+    """Check deserialization of well-formed structure used
+    as example data with all combinations of null values
+    in non-mandatory fields.
+    """
+    structure = {field: good_structure[field] for field in good_structure}
+
+    # Have to include `assemblies` here, although it is only optional,
+    # `structure_features = ['assemblies']` in the test document so it
+    # is effectively mandatory
+    mandatory_fields = ("id", "type", "structure_features", "assemblies")
+
+    total_fields = [
+        field
+        for field in structure["attributes"].keys()
+        if field not in mandatory_fields
+    ]
+    for r in range(len(total_fields)):
+        for f in itertools.combinations(total_fields, r=r):
+            incomplete_structure = {field: structure[field] for field in structure}
+            for field in f:
+                incomplete_structure["attributes"][field] = None
+
+            StructureResource(**incomplete_structure)
+
+
 def test_more_good_structures(good_structures, mapper):
     """Check well-formed structures with specific edge-cases"""
     for index, structure in enumerate(good_structures):
@@ -27,7 +56,7 @@ def test_more_good_structures(good_structures, mapper):
         except ValidationError:
             # Printing to keep the original exception as is, while still being informational
             print(
-                f"Good test structure {index} failed to validate from 'test_more_structures.json'"
+                f"Good test structure {index} failed to validate from 'test_good_structures.json'"
             )
             raise
 
@@ -36,7 +65,9 @@ def test_bad_structures(bad_structures, mapper):
     """Check badly formed structures"""
     for index, structure in enumerate(bad_structures):
         # This is for helping devs finding any errors that may occur
-        print(f"Trying structure number {index} from 'test_bad_structures.json'")
+        print(
+            f"Trying structure number {index}/{len(bad_structures)} from 'test_bad_structures.json'"
+        )
         with pytest.raises(ValidationError):
             StructureResource(**mapper(MAPPER).map_back(structure))
 
@@ -139,7 +170,7 @@ deformities = (
 
 
 @pytest.mark.parametrize("deformity", deformities)
-def test_structure_deformities(good_structure, deformity):
+def test_structure_fatal_deformities(good_structure, deformity):
     """Make specific checks upon performing single invalidating deformations
     of the data of a good structure.
 
@@ -153,3 +184,21 @@ def test_structure_deformities(good_structure, deformity):
     good_structure["attributes"].update(deformity)
     with pytest.raises(ValidationError, match=fr".*{re.escape(message)}.*"):
         StructureResource(**good_structure)
+
+
+minor_deformities = (
+    {f: None} for f in set(f for _ in CORRELATED_STRUCTURE_FIELDS for f in _)
+)
+
+
+@pytest.mark.parametrize("deformity", minor_deformities)
+def test_structure_minor_deformities(good_structure, deformity):
+    """Make specific checks upon performing single minor invalidations
+    of the data of a good structure that should emit warnings.
+    """
+    if deformity is None:
+        StructureResource(**good_structure)
+    else:
+        good_structure["attributes"].update(deformity)
+        with pytest.warns(MissingExpectedField):
+            StructureResource(**good_structure)

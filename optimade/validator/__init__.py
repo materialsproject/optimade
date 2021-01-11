@@ -5,7 +5,7 @@ from .validator import ImplementationValidator
 __all__ = ["ImplementationValidator", "validate"]
 
 
-def validate():
+def validate():  # pragma: no cover
     import argparse
     import sys
     import os

@@ -1503,7 +1503,13 @@
       "O",
       "O"
     ],
-    "structure_features": ["assemblies"],
+    "assemblies": [
+      {
+        "sites_in_groups": [ [0], [1], [2] ],
+        "group_probabilities": [0.3, 0.5, 0.2]
+      }
+    ],
+    "structure_features": [],
     "task_id": "mpf_276"
   },
   {
@@ -2402,7 +2408,7 @@
         "group_probabilities": [0.3, 0.5, 0.2]
       }
     ],
-    "structure_features": ["assemblies"]
+    "structure_features": []
   },
   {
     "task_id": "db/1234567",

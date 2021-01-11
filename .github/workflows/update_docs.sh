@@ -18,13 +18,10 @@ fi
 echo -e "\n-o- Update version -o-"
 invoke setver --ver="${GITHUB_REF#refs/tags/}"
 
-echo -e "\n-o- Overwrite old CHANGELOG.md -o-"
-mv -f CHANGELOG.md docs/
-
 echo -e "\n-o- Commit updates - Version & Changelog -o-"
 git add optimade/__init__.py docs/static/default_config.json
 git add openapi/index_openapi.json openapi/openapi.json
-git add docs/CHANGELOG.md
+git add CHANGELOG.md
 git commit -m "Release ${GITHUB_REF#refs/tags/} - Changelog"
 
 echo -e "\n-o- Update version tag -o-"

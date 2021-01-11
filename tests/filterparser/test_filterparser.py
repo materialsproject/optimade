@@ -40,8 +40,8 @@ class TestParserV0_9_5:
         assert repr(self.parser) is not None
 
 
-class TestParserV0_10_1:
-    version = (0, 10, 1)
+class TestParserV1_0_0:
+    version = (1, 0, 0)
     variant = "default"
 
     @pytest.fixture(autouse=True)

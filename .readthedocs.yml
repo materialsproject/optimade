@@ -1,0 +1,18 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+version: 2
+
+python:
+  version: 3.7
+  install:
+    - requirements: requirements.txt
+    - requirements: requirements-docs.txt
+
+mkdocs:
+  configuration: mkdocs.yml
+  fail_on_warning: false
+
+
+submodules:
+  exclude: all

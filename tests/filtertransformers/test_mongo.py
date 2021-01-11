@@ -7,7 +7,7 @@ from optimade.server.exceptions import BadRequest
 
 
 class TestMongoTransformer:
-    version = (0, 10, 1)
+    version = (1, 0, 0)
     variant = "default"
 
     @pytest.fixture(autouse=True)
