@@ -13,7 +13,7 @@
     "base_url": null,
     "implementation": {
         "name": "OPTIMADE Python Tools",
-        "version": "0.13.2",
+        "version": "0.13.3",
         "source_url": "https://github.com/Materials-Consortia/optimade-python-tools",
         "maintainer": {"email": "dev@optimade.org"}
     },
