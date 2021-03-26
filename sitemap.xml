@@ -1,259 +1,263 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url>
      <loc>https://www.optimade.org/optimade-python-tools/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/INSTALL/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/configuration/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/CONTRIBUTING/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/use_cases/single_db/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/use_cases/multi_db/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/use_cases/dynamic_db/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/CHANGELOG/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/all_models/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/base/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/exceptions/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/logger/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/warnings/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/references/adapter/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/adapter/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/aiida/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/ase/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/cif/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/jarvis/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/proteindatabank/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/pymatgen/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/adapters/structures/utils/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/filterparser/lark_parser/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/filtertransformers/base_transformer/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/filtertransformers/django/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/filtertransformers/elasticsearch/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/filtertransformers/mongo/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/baseinfo/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/entries/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/index_metadb/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/jsonapi/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/links/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/optimade_json/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/references/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/responses/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/structures/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/models/utils/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/config/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/exception_handlers/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/exceptions/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/logger/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/main/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/main_index/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/middleware/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/query_params/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/schemas/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/warnings/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
+     <changefreq>daily</changefreq>
+    </url><url>
+     <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/entry_collections/elasticsearch/</loc>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/entry_collections/entry_collections/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/entry_collections/mongo/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/mappers/entries/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/mappers/links/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/mappers/references/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/mappers/structures/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/index_info/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/info/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/landing/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/links/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/references/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/structures/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/utils/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/server/routers/versions/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/validator/config/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/validator/utils/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://www.optimade.org/optimade-python-tools/api_reference/validator/validator/</loc>
-     <lastmod>2021-03-05</lastmod>
+     <lastmod>2021-03-26</lastmod>
      <changefreq>daily</changefreq>
     </url>
 </urlset>
