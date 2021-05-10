@@ -6,7 +6,9 @@ elasticsearch_dsl = pytest.importorskip(
 )
 
 from optimade.filterparser import LarkParser
-from optimade.filtertransformers.elasticsearch import ElasticTransformer, Quantity
+from optimade.filtertransformers.elasticsearch import (
+    ElasticTransformer,
+)
 
 
 @pytest.fixture
@@ -16,28 +18,9 @@ def parser():
 
 @pytest.fixture
 def transformer():
-    nelements = Quantity(name="nelements")
-    elements_only = Quantity(name="elements_only")
-    elements_ratios = Quantity(name="elements_ratios")
-    elements_ratios.nested_quantity = elements_ratios
-    elements = Quantity(
-        name="elements",
-        length_quantity=nelements,
-        has_only_quantity=elements_only,
-        nested_quantity=elements_ratios,
-    )
-    dimension_types = Quantity(name="dimension_types")
-    dimension_types.length_quantity = dimension_types
+    from optimade.server.mappers import StructureMapper
 
-    quantities = [
-        nelements,
-        elements_only,
-        elements_ratios,
-        elements,
-        dimension_types,
-        Quantity(name="chemical_formula_reduced"),
-    ]
-    return ElasticTransformer(quantities=quantities)
+    return ElasticTransformer(mapper=StructureMapper())
 
 
 test_queries = [
@@ -71,14 +54,14 @@ test_queries = [
     ('chemical_formula_reduced ENDS "C"', 1),
     ("elements LENGTH = 2", 3),
     ("elements LENGTH = 3", 1),
-    ("dimension_types LENGTH = 0", 3),
-    ("dimension_typesLENGTH = 1", 1),
-    ("nelements = 2 AND dimension_types LENGTH = 1", 1),
-    ("nelements = 3 AND dimension_types LENGTH = 1", 0),
-    ("nelements = 3 OR dimension_types LENGTH = 1", 2),
-    ("nelements > 1 OR dimension_types LENGTH = 1 AND nelements = 2", 4),
-    ("(nelements > 1 OR dimension_types LENGTH = 1) AND nelements = 2", 3),
-    ("NOT dimension_types LENGTH = 1", 3),
+    ("elements LENGTH > 1", 3),
+    ("elementsLENGTH = 1", 1),
+    ("nelements = 2 AND elements LENGTH = 2", 1),
+    ("nelements = 3 AND elements LENGTH = 1", 0),
+    ("nelements = 3 OR elements LENGTH = 1", 2),
+    ("nelements > 1 OR elements LENGTH = 1 AND nelements = 2", 4),
+    ("(nelements > 1 OR elements LENGTH = 1) AND nelements = 2", 3),
+    ("NOT elements LENGTH = 1", 3),
 ]
 
 
@@ -87,3 +70,19 @@ def test_parse_n_transform(query, parser, transformer):
     tree = parser.parse(query[0])
     result = transformer.transform(tree)
     assert result is not None
+
+
+def test_bad_queries(parser, transformer):
+    filter_ = "unknown_field = 0"
+    with pytest.raises(
+        Exception, match="'unknown_field' is not a searchable quantity"
+    ) as exc_info:
+        transformer.transform(parser.parse(filter_))
+    assert exc_info.type.__name__ == "VisitError"
+
+    filter_ = "dimension_types LENGTH = 0"
+    with pytest.raises(
+        Exception, match="LENGTH is not supported for 'dimension_types'"
+    ) as exc_info:
+        transformer.transform(parser.parse(filter_))
+    assert exc_info.type.__name__ == "VisitError"

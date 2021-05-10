@@ -149,7 +149,7 @@ def test_list_length_comparisons_aliased(check_response, check_error_response):
             request,
             expected_status=501,
             expected_title="NotImplementedError",
-            expected_detail="LENGTH is not supported for nsites",
+            expected_detail="LENGTH is not supported for 'nsites'",
         )
     else:
         check_response(request, expected_ids)
@@ -189,6 +189,10 @@ def test_list_has_only(check_response):
     check_response(request, expected_ids)
 
     request = '/structures?filter=elements HAS ONLY "Ac"'
+    expected_ids = ["mpf_1"]
+    check_response(request, expected_ids)
+
+    request = '/structures?filter=elements HAS ONLY "Ac" AND nelements IS KNOWN'
     expected_ids = ["mpf_1"]
     check_response(request, expected_ids)
 
@@ -378,9 +382,9 @@ def test_filter_on_relationships(check_response, check_error_response):
     if CONFIG.database_backend == SupportedBackend.ELASTIC:
         check_error_response(
             request,
-            expected_status=400,
-            expected_title="Bad Request",
-            expected_detail="references is not a searchable quantity",
+            expected_status=501,
+            expected_title="NotImplementedError",
+            expected_detail="Unable to filter on relationships with type 'references'",
         )
         pytest.xfail("Elasticsearch backend does not support relationship filtering.")
     check_response(request, expected_ids)

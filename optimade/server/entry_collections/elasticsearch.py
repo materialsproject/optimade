@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Tuple, List, Optional, Dict, Any, Iterable, Union
 
 from optimade.filterparser import LarkParser
-from optimade.filtertransformers.elasticsearch import ElasticTransformer, Quantity
+from optimade.filtertransformers.elasticsearch import ElasticTransformer
 from optimade.server.config import CONFIG
 from optimade.server.logger import LOGGER
 from optimade.models import EntryResource
@@ -46,26 +46,7 @@ class ElasticCollection(EntryCollection):
         self.provider_fields = CONFIG.provider_fields.get(resource_mapper.ENDPOINT, [])
         self.parser = LarkParser()
 
-        quantities = {}
-        for field in self.all_fields:
-            alias = self.resource_mapper.get_backend_field(field)
-            length_alias = self.resource_mapper.length_alias_for(field)
-
-            quantities[field] = Quantity(name=field, es_field=alias)
-            if length_alias is not None:
-                quantities[length_alias] = Quantity(name=length_alias)
-                quantities[field].length_quantity = quantities[length_alias]
-
-        if "elements" in quantities:
-            quantities["elements"].has_only_quantity = Quantity(name="elements_only")
-            quantities["elements"].nested_quantity = quantities["elements_ratios"]
-
-        if "elements_ratios" in quantities:
-            quantities["elements_ratios"].nested_quantity = quantities[
-                "elements_ratios"
-            ]
-
-        self.transformer = ElasticTransformer(quantities=quantities.values())
+        self.transformer = ElasticTransformer(mapper=self.resource_mapper)
 
         self.name = name
 

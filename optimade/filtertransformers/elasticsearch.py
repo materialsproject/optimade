@@ -1,35 +1,23 @@
-from typing import List
-
+from typing import Dict, Union, Type
 from lark import v_args
 from elasticsearch_dsl import Q, Text, Keyword, Integer, Field
-from optimade.filtertransformers import BaseTransformer
-from optimade.server.exceptions import BadRequest
+
+from optimade.filtertransformers import BaseTransformer, Quantity
+from optimade.server.mappers import BaseResourceMapper
 
 __all__ = ("ElasticTransformer",)
 
 
-_cmp_operators = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte"}
-_rev_cmp_operators = {">": "<", ">=": "<=", "<": ">", "<=": ">=", "=": "=", "!=": "!="}
-_has_operators = {"ALL": "must", "ANY": "should"}
-_length_quantities = {
-    "elements": "nelements",
-    "elements_ratios": "nelements",
-    "dimension_types": "dimension_types",
-}
-
-
-class Quantity:
-    """Class to provide information about available quantities to the transformer.
-
-    The elasticsearch transformer will use `Quantity`s to (a) do some semantic checks,
-    (b) map quantities to the underlying elastic index.
+class ElasticsearchQuantity(Quantity):
+    """Elasticsearch-specific extension of the underlying
+    [`Quantity`][optimade.filtertransformers.base_transformer.Quantity] class.
 
     Attributes:
         name: The name of the quantity as used in the filter expressions.
-        es_field: The name of the field for this quanity in elastic search, will be
+        backend_field: The name of the field for this quanity in elastic search, will be
             ``name`` by default.
-        elastic_mapping_type: A decendent of an elasticsearch_dsl Field that denotes which
-            mapping was used in the elastic search index.
+        elastic_mapping_type: A decendent of an `elasticsearch_dsl.Field` that denotes which
+            mapping type was used in the Elasticsearch index.
         length_quantity: Elasticsearch does not support length of arrays, but we can
             map fields with array to other fields with ints about the array length. The
             LENGTH operator will only be supported for quantities with this attribute.
@@ -47,56 +35,99 @@ class Quantity:
 
     def __init__(
         self,
-        name,
-        es_field: str = None,
+        name: str,
+        backend_field: str = None,
+        length_quantity: "ElasticsearchQuantity" = None,
         elastic_mapping_type: Field = None,
-        length_quantity: "Quantity" = None,
-        has_only_quantity: "Quantity" = None,
-        nested_quantity: "Quantity" = None,
+        has_only_quantity: "ElasticsearchQuantity" = None,
+        nested_quantity: "ElasticsearchQuantity" = None,
     ):
 
-        self.name = name
-        self.es_field = es_field if es_field is not None else name
+        super().__init__(name, backend_field, length_quantity)
+
         self.elastic_mapping_type = (
             Keyword if elastic_mapping_type is None else elastic_mapping_type
         )
-        self.length_quantity = length_quantity
         self.has_only_quantity = has_only_quantity
         self.nested_quantity = nested_quantity
 
-    def __repr__(self):
-        return self.name
-
 
 class ElasticTransformer(BaseTransformer):
-    """Transformer that transforms ``v0.10.1`` grammar parse trees into queries.
+    """Transformer that transforms ``v0.10.1``/`v1.0` grammar parse
+    trees into Elasticsearch queries.
 
-    Uses elasticsearch_dsl and will produce a `Q` instance.
+    Uses elasticsearch_dsl and will produce an `elasticsearch_dsl.Q` instance.
+
     """
 
-    def __init__(self, quantities: List[Quantity]):
-        """
-        Arguments:
-            quantities: A list of :class:`Quantity`s that describe how optimade (and other)
-                quantities are mapped to the elasticsearch index.
-        """
-        self.index_mapping = {quantity.name: quantity for quantity in quantities}
-        super().__init__()
+    operator_map = {
+        "<": "lt",
+        "<=": "lte",
+        ">": "gt",
+        ">=": "gte",
+    }
 
-    def _field(self, quantity, nested=None):
+    __quantity_type: Type[ElasticsearchQuantity] = ElasticsearchQuantity
+
+    def __init__(
+        self, mapper: BaseResourceMapper = None, quantities: Dict[str, Quantity] = None
+    ):
+        if quantities is not None:
+            self.quantities = quantities
+
+        super().__init__(mapper=mapper)
+
+    def _field(self, quantity: Union[str, Quantity], nested: Quantity = None) -> str:
+        """Used to unwrap from `property` to the string backend field name.
+
+        If passed a `Quantity` (or a derived `ElasticsearchQuantity`), this method
+        returns the backend field name, modulo some handling of nested fields.
+
+        If passed a string quantity name:
+        - Check that the name does not match a relationship type,
+          raising a `NotImplementedError` if it does. If the
+        - If the string is prefixed by an underscore, assume this is a
+          provider-specific field from another provider and simply return it.
+          The original `property` rule would have already filtered out provider
+          fields for this backend appropriately as `Quantity` objects.
+
+        Returns:
+            The field name to use for database queries.
+
+        """
+
+        if (
+            isinstance(quantity, str)
+            and quantity in self.mapper.RELATIONSHIP_ENTRY_TYPES
+        ):
+            raise NotImplementedError(
+                f"Unable to filter on relationships with type {quantity!r}"
+            )
+
         if nested is not None:
-            return "%s.%s" % (nested.es_field, quantity.name)
+            return "%s.%s" % (nested.backend_field, quantity.name)
 
-        return quantity.es_field
+        return quantity.backend_field
 
-    def _query_op(self, quantity, op, value, nested=None):
-        """
-        Return a range, match, or term query for the given quantity, comparison
-        operator, and value
+    def _query_op(
+        self,
+        quantity: Union[ElasticsearchQuantity, str],
+        op: str,
+        value: Union[str, float, int],
+        nested: ElasticsearchQuantity = None,
+    ) -> Q:
+        """Return a range, match, or term query for the given quantity, comparison
+        operator, and value.
+
+        Returns:
+            An elasticsearch_dsl query.
+
+        Raises:
+            BadRequest: If the query is not well-defined or is not supported.
         """
         field = self._field(quantity, nested=nested)
-        if op in _cmp_operators:
-            return Q("range", **{field: {_cmp_operators[op]: value}})
+        if op in self.operator_map:
+            return Q("range", **{field: {self.operator_map[op]: value}})
 
         if quantity.elastic_mapping_type == Text:
             query_type = "match"
@@ -109,16 +140,15 @@ class ElasticTransformer(BaseTransformer):
             return Q(query_type, **{field: value})
 
         if op == "!=":
-            # != queries must also include an existence check
+            # != queries must also include an existence/v check
             # Note that for MongoDB, `$exists` will include null-valued fields,
             # where as in ES `exists` excludes them.
             # pylint: disable=invalid-unary-operand-type
             return ~Q(query_type, **{field: value}) & Q("exists", field=field)
 
     def _has_query_op(self, quantities, op, predicate_zip_list):
-        """
-        Returns a bool query that combines the operator queries ():func:`_query_op`)
-        for each predicate and zipped quantity pericates combinations.
+        """Returns a bool query that combines the operator calls `_query_op`
+        for each predicate and zipped quantity predicate combination.
         """
         if op == "HAS":
             kind = "must"  # in case of HAS we do a must over the "list" of the one given element
@@ -258,7 +288,7 @@ class ElasticTransformer(BaseTransformer):
         if not isinstance(quantity, Quantity):
             raise TypeError("Only quantities can be compared to constant values.")
 
-        return self._query_op(quantity, _rev_cmp_operators[op], value)
+        return self._query_op(quantity, self._reversed_operator_map[op], value)
 
     @v_args(inline=True)
     def value_op_rhs(self, op, value):
@@ -276,7 +306,7 @@ class ElasticTransformer(BaseTransformer):
         def query(quantity):
             if quantity.length_quantity is None:
                 raise NotImplementedError(
-                    "LENGTH is not supported for %s" % quantity.name
+                    "LENGTH is not supported for '%s'" % quantity.name
                 )
             quantity = quantity.length_quantity
             return self._query_op(quantity, op, value)
@@ -367,19 +397,6 @@ class ElasticTransformer(BaseTransformer):
             wildcard = "*%s" % value
 
         return lambda quantity: Q("wildcard", **{self._field(quantity): wildcard})
-
-    def property(self, args):
-        # property: IDENTIFIER ( "." IDENTIFIER )*
-        quantity_name = args[0]
-
-        if quantity_name not in self.index_mapping:
-            raise BadRequest(detail=f"{quantity_name} is not a searchable quantity")
-
-        quantity = self.index_mapping.get(quantity_name, None)
-        if quantity is None:
-            quantity = Quantity(name=quantity_name)
-
-        return quantity
 
     @v_args(inline=True)
     def string(self, string):

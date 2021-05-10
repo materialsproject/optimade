@@ -4,6 +4,9 @@ given backend.
 
 """
 
-from optimade.filtertransformers.base_transformer import BaseTransformer
+from optimade.filtertransformers.base_transformer import BaseTransformer, Quantity
 
-__all__ = ("BaseTransformer",)
+__all__ = (
+    "BaseTransformer",
+    "Quantity",
+)

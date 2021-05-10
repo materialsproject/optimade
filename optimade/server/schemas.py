@@ -6,7 +6,9 @@ ENTRY_INFO_SCHEMAS = {
 }
 
 
-def retrieve_queryable_properties(schema: dict, queryable_properties: list) -> dict:
+def retrieve_queryable_properties(
+    schema: dict, queryable_properties: list = None
+) -> dict:
     """Recurisvely loops through the schema of a pydantic model and
     resolves all references, returning a dictionary of all the
     OPTIMADE-queryable properties of that model.
@@ -23,7 +25,7 @@ def retrieve_queryable_properties(schema: dict, queryable_properties: list) -> d
     """
     properties = {}
     for name, value in schema["properties"].items():
-        if name in queryable_properties:
+        if not queryable_properties or name in queryable_properties:
             if "$ref" in value:
                 path = value["$ref"].split("/")[1:]
                 sub_schema = schema.copy()
@@ -44,7 +46,7 @@ def retrieve_queryable_properties(schema: dict, queryable_properties: list) -> d
                 properties[name]["sortable"] = value.get("sortable", True)
                 # Try to get OpenAPI-specific "format" if possible, else get "type"; a mandatory OpenAPI key.
                 properties[name]["type"] = DataType.from_json_type(
-                    value.get("format", value["type"])
+                    value.get("format", value.get("type"))
                 )
 
     return properties

@@ -1,7 +1,18 @@
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Type, Set
 import warnings
 
+from optimade.models.entries import EntryResource
+
 __all__ = ("BaseResourceMapper",)
+
+
+class classproperty(property):
+    """A simple extension of the property decorator that binds to types
+    rather than instances.
+    """
+
+    def __get__(self, obj, objtype=None):
+        return super(classproperty, self).__get__(objtype)
 
 
 class BaseResourceMapper:
@@ -29,12 +40,13 @@ class BaseResourceMapper:
 
     """
 
-    ENDPOINT: str = ""
     ALIASES: Tuple[Tuple[str, str]] = ()
     LENGTH_ALIASES: Tuple[Tuple[str, str]] = ()
     PROVIDER_FIELDS: Tuple[str] = ()
+    ENTRY_RESOURCE_CLASS: Type[EntryResource] = EntryResource
+    RELATIONSHIP_ENTRY_TYPES: Set[str] = {"references", "structures"}
+    TOP_LEVEL_NON_ATTRIBUTES_FIELDS: Set[str] = {"id", "type", "relationships", "links"}
     REQUIRED_FIELDS: set = set()
-    TOP_LEVEL_NON_ATTRIBUTES_FIELDS: set = {"id", "type", "relationships", "links"}
 
     @classmethod
     def all_aliases(cls) -> Tuple[Tuple[str, str]]:
@@ -60,6 +72,35 @@ class BaseResourceMapper:
             )
             + tuple(CONFIG.aliases.get(cls.ENDPOINT, {}).items())
             + cls.ALIASES
+        )
+
+    @classproperty
+    def ALL_ATTRIBUTES(cls) -> Set[str]:
+        """Returns all attributes served by this entry."""
+        from optimade.server.config import CONFIG
+
+        return (
+            set(cls.ENTRY_RESOURCE_ATTRIBUTES)
+            .union(
+                cls.get_optimade_field(field)
+                for field in CONFIG.provider_fields.get(cls.ENDPOINT, ())
+            )
+            .union(set(cls.get_optimade_field(field) for field in cls.PROVIDER_FIELDS))
+        )
+
+    @classproperty
+    def ENTRY_RESOURCE_ATTRIBUTES(cls) -> Set[str]:
+        from optimade.server.schemas import retrieve_queryable_properties
+
+        return retrieve_queryable_properties(cls.ENTRY_RESOURCE_CLASS.schema())
+
+    @classproperty
+    def ENDPOINT(cls) -> str:
+        return (
+            cls.ENTRY_RESOURCE_CLASS.schema()
+            .get("properties", {})
+            .get("type", {})
+            .get("const", "")
         )
 
     @classmethod
