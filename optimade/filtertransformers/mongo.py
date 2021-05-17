@@ -41,7 +41,6 @@ class MongoTransformer(BaseTransformer):
         query = self._apply_unknown_or_null_filter(query)
         query = self._apply_mongo_id_filter(query)
         query = self._apply_mongo_date_filter(query)
-
         return query
 
     def value_list(self, arg):
@@ -95,28 +94,33 @@ class MongoTransformer(BaseTransformer):
         # e.g. `("elements", {"$size": 2, "$all": ["Ag", "Au"]})` should become
         # `{"elements": {"$all": ["Ag", "Au"]}, "nelements": 2}` if the `elements` -> `nelements`
         # length alias is defined.
-        if (
-            "$size" in query
-            and getattr(self.backend_mapping.get(quantity), "length_quantity", None)
-            is not None
-        ):
+        if "$size" in query:
+            if (
+                getattr(self.backend_mapping.get(quantity), "length_quantity", None)
+                is not None
+            ):
+                size_query = {
+                    self.backend_mapping[
+                        quantity
+                    ].length_quantity.backend_field: query.pop("$size")
+                }
 
-            size_query = {
-                self.backend_mapping[quantity].length_quantity.backend_field: query.pop(
-                    "$size"
-                )
-            }
+                final_query = {}
+                if query:
+                    final_query = {quantity: query}
+                for q in size_query:
+                    if q in query:
+                        query[q].update(size_query[q])
+                    else:
+                        final_query[q] = size_query[q]
 
-            final_query = {}
-            if query:
-                final_query = {quantity: query}
-            for q in size_query:
-                if q in query:
-                    query[q].update(size_query[q])
-                else:
-                    final_query[q] = size_query[q]
+                return final_query
 
-            return final_query
+            # Another workaround: in the case that there is no length alias, and the field
+            # itself does not exist in the database, then `{"$size": 1}` matches all documents,
+            # so we must add another existence check
+            if "$exists" not in query:
+                query["$exists"] = True
 
         return {quantity: query}
 
@@ -308,7 +312,12 @@ class MongoTransformer(BaseTransformer):
                     subdict["$and"] = []
                 subdict["$and"].extend(
                     [
-                        {f"relationships.{_prop}.data": {"$size": expr.pop("$size")}},
+                        {
+                            f"relationships.{_prop}.data": {
+                                "$size": expr.pop("$size"),
+                                "$exists": expr.pop("$exists"),
+                            }
+                        },
                         {f"relationships.{_prop}.data.{_field}": expr},
                     ]
                 )
