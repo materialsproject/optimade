@@ -22,24 +22,33 @@ class BaseResourceMapper:
     the specification.
 
     Attributes:
-        ENDPOINT (str): defines the endpoint for which to apply this
-            mapper.
-        ALIASES (Tuple[Tuple[str, str]]): a tuple of aliases between
+        ALIASES: a tuple of aliases between
             OPTIMADE field names and the field names in the database ,
             e.g. `(("elements", "custom_elements_field"))`.
-        LENGTH_ALIASES (Tuple[Tuple[str, str]]): a tuple of aliases between
+        LENGTH_ALIASES: a tuple of aliases between
             a field name and another field that defines its length, to be used
             when querying, e.g. `(("elements", "nelements"))`.
             e.g. `(("elements", "custom_elements_field"))`.
-        PROVIDER_FIELDS (Tuple[str]): a tuple of extra field names that this
+        ENTRY_RESOURCE_CLASS: The entry type that this mapper corresponds to.
+        PROVIDER_FIELDS: a tuple of extra field names that this
             mapper should support when querying with the database prefix.
-        REQUIRED_FIELDS (set[str]): the set of fieldnames to return
+        REQUIRED_FIELDS: the set of fieldnames to return
             when mapping to the OPTIMADE format.
-        TOP_LEVEL_NON_ATTRIBUTES_FIELDS (set[str]): the set of top-level
+        TOP_LEVEL_NON_ATTRIBUTES_FIELDS: the set of top-level
             field names common to all endpoints.
 
     """
 
+    try:
+        from optimade.server.data import (
+            providers as PROVIDERS,
+        )  # pylint: disable=no-name-in-module
+    except (ImportError, ModuleNotFoundError):
+        PROVIDERS = {}
+
+    KNOWN_PROVIDER_PREFIXES: Set[str] = set(
+        prov["id"] for prov in PROVIDERS.get("data", [])
+    )
     ALIASES: Tuple[Tuple[str, str]] = ()
     LENGTH_ALIASES: Tuple[Tuple[str, str]] = ()
     PROVIDER_FIELDS: Tuple[str] = ()
@@ -73,6 +82,21 @@ class BaseResourceMapper:
             + tuple(CONFIG.aliases.get(cls.ENDPOINT, {}).items())
             + cls.ALIASES
         )
+
+    @classproperty
+    def SUPPORTED_PREFIXES(cls) -> Set[str]:
+        """A set of prefixes handled by this entry type.
+
+        !!! note
+        This implementation only includes the provider prefix,
+        but in the future this property may be extended to include other
+        namespaces (for serving fields from, e.g., other providers or
+        domain-specific terms).
+
+        """
+        from optimade.server.config import CONFIG
+
+        return {CONFIG.provider.prefix}
 
     @classproperty
     def ALL_ATTRIBUTES(cls) -> Set[str]:

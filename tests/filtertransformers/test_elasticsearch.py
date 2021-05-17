@@ -62,6 +62,7 @@ test_queries = [
     ("nelements > 1 OR elements LENGTH = 1 AND nelements = 2", 4),
     ("(nelements > 1 OR elements LENGTH = 1) AND nelements = 2", 3),
     ("NOT elements LENGTH = 1", 3),
+    ("_exmpl2_field = 2", 1),
 ]
 
 
@@ -75,7 +76,7 @@ def test_parse_n_transform(query, parser, transformer):
 def test_bad_queries(parser, transformer):
     filter_ = "unknown_field = 0"
     with pytest.raises(
-        Exception, match="'unknown_field' is not a searchable quantity"
+        Exception, match="'unknown_field' is not a known or searchable quantity"
     ) as exc_info:
         transformer.transform(parser.parse(filter_))
     assert exc_info.type.__name__ == "VisitError"
@@ -83,6 +84,13 @@ def test_bad_queries(parser, transformer):
     filter_ = "dimension_types LENGTH = 0"
     with pytest.raises(
         Exception, match="LENGTH is not supported for 'dimension_types'"
+    ) as exc_info:
+        transformer.transform(parser.parse(filter_))
+    assert exc_info.type.__name__ == "VisitError"
+
+    filter_ = "_exmpl_field = 1"
+    with pytest.raises(
+        Exception, match="'_exmpl_field' is not a known or searchable quantity"
     ) as exc_info:
         transformer.transform(parser.parse(filter_))
     assert exc_info.type.__name__ == "VisitError"

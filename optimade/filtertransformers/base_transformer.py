@@ -7,11 +7,13 @@ for turning filters parsed by lark into backend-specific queries.
 
 import abc
 from typing import Dict, Any, Type
+import warnings
 
 from lark import Transformer, v_args, Tree
 
 from optimade.server.mappers import BaseResourceMapper
 from optimade.server.exceptions import BadRequest
+from optimade.server.warnings import UnknownProviderProperty
 
 
 __all__ = (
@@ -216,23 +218,33 @@ class BaseTransformer(abc.ABC, Transformer):
         # If the quantity name matches an entry type (indicating a relationship filter)
         # then simply return the quantity name; the inherited property
         # must then handle any futher the nested identifiers
-        if self.mapper and quantity_name in self.mapper.RELATIONSHIP_ENTRY_TYPES:
-            return quantity_name
+        if self.mapper:
+            if quantity_name in self.mapper.RELATIONSHIP_ENTRY_TYPES:
+                return quantity_name
 
         if self.quantities and quantity_name not in self.quantities:
             # If the quantity is provider-specific, but does not match this provider,
-            # then return None so that this query can be dropped.
-            if (
-                self.mapper
-                and quantity_name.startswith("_")
-                and not any(
-                    quantity_name.split("_")[1] == p
-                    for p in self.mapper.SUPPORTED_PREFIXES
-                )
-            ):
-                return quantity_name
+            # then return the quantity name such that it can be trreated as unknown.
+            # If the prefix does not match another known provider, also emit a warning
+            # If the prefix does match a known prpovider, do not return a warning.
+            # Following [Handling unknown property names](https://github.com/Materials-Consortia/OPTIMADE/blob/master/optimade.rst#handling-unknown-property-names)
+            if self.mapper and quantity_name.startswith("_"):
+                prefix = quantity_name.split("_")[1]
+                if not any(prefix == p for p in self.mapper.SUPPORTED_PREFIXES):
+                    if not any(
+                        prefix == p for p in self.mapper.KNOWN_PROVIDER_PREFIXES
+                    ):
+                        warnings.warn(
+                            UnknownProviderProperty(
+                                f"Field {quantity_name!r} has an unrecognised prefix: this property has been treated as UNKNOWN."
+                            )
+                        )
 
-            raise BadRequest(detail=f"'{quantity_name}' is not a searchable quantity")
+                    return quantity_name
+
+            raise BadRequest(
+                detail=f"'{quantity_name}' is not a known or searchable quantity"
+            )
 
         quantity = self.quantities.get(quantity_name, None)
         if quantity is None:

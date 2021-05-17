@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, Dict
 
 import pytest
 
@@ -109,6 +109,7 @@ def check_response(get_good_response):
         page_limit: int = CONFIG.page_limit,
         expected_return: int = None,
         expected_as_is: bool = False,
+        expected_warnings: List[Dict[str, str]] = None,
         server: Union[str, OptimadeTestClient] = "regular",
     ):
         response = get_good_response(request, server)
@@ -127,6 +128,16 @@ def check_response(get_good_response):
             assert expected_ids[:page_limit] == response_ids
         else:
             assert expected_ids == response_ids
+
+        expected_warnings = expected_warnings if expected_warnings else []
+        if expected_warnings:
+            assert "warnings" in response["meta"]
+            assert len(expected_warnings) == len(response["meta"]["warnings"])
+            for ind, warn in enumerate(expected_warnings):
+                for key in warn:
+                    assert response["meta"]["warnings"][ind][key] == warn[key]
+        else:
+            assert "warnings" not in response["meta"]
 
     return inner
 

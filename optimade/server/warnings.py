@@ -49,3 +49,10 @@ class TimestampNotRFCCompliant(OptimadeWarning):
     RFC 3339 compliant. This may cause undefined behaviour in the query results.
 
     """
+
+
+class UnknownProviderProperty(OptimadeWarning):
+    """A provider-specific property has been requested via `response_fields` or as in a `filter` that is not
+    recognised by this implementation.
+
+    """

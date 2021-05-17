@@ -186,6 +186,7 @@ class MongoTransformer(BaseTransformer):
         quantity = super().property(args)
         if isinstance(quantity, Quantity):
             quantity = quantity.backend_field
+
         return ".".join([quantity] + args[1:])
 
     def length_op_rhs(self, arg):
@@ -500,5 +501,7 @@ def recursive_postprocessing(filter_, condition, replacement):
                     recursive_postprocessing(q, condition, replacement) for q in expr
                 ]
         return _cached_filter
+
+    return filter_
 
     return filter_

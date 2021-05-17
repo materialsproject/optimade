@@ -96,13 +96,17 @@ class ElasticTransformer(BaseTransformer):
 
         """
 
-        if (
-            isinstance(quantity, str)
-            and quantity in self.mapper.RELATIONSHIP_ENTRY_TYPES
-        ):
-            raise NotImplementedError(
-                f"Unable to filter on relationships with type {quantity!r}"
-            )
+        if isinstance(quantity, str):
+            if quantity in self.mapper.RELATIONSHIP_ENTRY_TYPES:
+                raise NotImplementedError(
+                    f"Unable to filter on relationships with type {quantity!r}"
+                )
+
+            # In this case, the property rule has already filtered out fields
+            # that do not match this provider, so this indicates an "other provider"
+            # field that should be passed over
+            if quantity.startswith("_"):
+                return quantity
 
         if nested is not None:
             return "%s.%s" % (nested.backend_field, quantity.name)
@@ -129,9 +133,16 @@ class ElasticTransformer(BaseTransformer):
         if op in self.operator_map:
             return Q("range", **{field: {self.operator_map[op]: value}})
 
-        if quantity.elastic_mapping_type == Text:
+        # If quantity is an "other provider" field then use Keyword as the default
+        # mapping type. These queries should not match on anything as the field
+        # is not present in the index.
+        elastic_mapping_type = Keyword
+        if isinstance(quantity, ElasticsearchQuantity):
+            elastic_mapping_type = quantity.elastic_mapping_type
+
+        if elastic_mapping_type == Text:
             query_type = "match"
-        elif quantity.elastic_mapping_type in [Keyword, Integer]:
+        elif elastic_mapping_type in [Keyword, Integer]:
             query_type = "term"
         else:
             raise NotImplementedError("Quantity has unsupported ES field type")
@@ -304,6 +315,12 @@ class ElasticTransformer(BaseTransformer):
             op = "="
 
         def query(quantity):
+
+            # This is only the case if quantity is an "other" provider's field,
+            # in which case, we should treat it as unknown and try to do a null query
+            if isinstance(quantity, str):
+                return self._query_op(quantity, op, value)
+
             if quantity.length_quantity is None:
                 raise NotImplementedError(
                     "LENGTH is not supported for '%s'" % quantity.name
