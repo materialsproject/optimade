@@ -74,10 +74,10 @@ def check_required_fields_response(get_good_response):
         expected_fields |= (
             get_mapper[endpoint].get_required_fields() - known_unused_fields
         )
-        expected_fields.add("attributes")
         request = f"/{endpoint}?response_fields={','.join(expected_fields)}"
 
         response = get_good_response(request, server)
+        expected_fields.add("attributes")
 
         response_fields = set()
         for entry in response["data"]:

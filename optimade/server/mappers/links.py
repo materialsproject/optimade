@@ -1,4 +1,5 @@
 from optimade.server.mappers.entries import BaseResourceMapper
+from optimade.models.links import LinksResource
 
 __all__ = ("LinksMapper",)
 
@@ -6,6 +7,8 @@ __all__ = ("LinksMapper",)
 class LinksMapper(BaseResourceMapper):
 
     ENDPOINT = "links"
+
+    ENTRY_RESOURCE_CLASS = LinksResource
 
     @classmethod
     def map_back(cls, doc: dict) -> dict:

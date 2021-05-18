@@ -12,7 +12,7 @@ from optimade.server.config import CONFIG, SupportedBackend
 from optimade.server.exceptions import BadRequest, Forbidden
 from optimade.server.mappers import BaseResourceMapper
 from optimade.server.query_params import EntryListingQueryParams, SingleEntryQueryParams
-from optimade.server.warnings import FieldValueNotRecognized
+from optimade.server.warnings import FieldValueNotRecognized, UnknownProviderProperty
 
 
 def create_collection(
@@ -144,6 +144,33 @@ class EntryCollection(ABC):
                 )
 
         exclude_fields = self.all_fields - response_fields
+        include_fields = (
+            response_fields - self.resource_mapper.TOP_LEVEL_NON_ATTRIBUTES_FIELDS
+        )
+
+        bad_optimade_fields = set()
+        bad_provider_fields = set()
+        for field in include_fields:
+            if field not in self.resource_mapper.ALL_ATTRIBUTES:
+                if field.startswith("_"):
+                    if any(
+                        field.startswith(f"_{prefix}_")
+                        for prefix in self.resource_mapper.SUPPORTED_PREFIXES
+                    ):
+                        bad_provider_fields.add(field)
+                else:
+                    bad_optimade_fields.add(field)
+
+        if bad_provider_fields:
+            warnings.warn(
+                message=f"Unrecognised field(s) for this provider requested in `response_fields`: {bad_provider_fields}.",
+                category=UnknownProviderProperty,
+            )
+
+        if bad_optimade_fields:
+            raise BadRequest(
+                detail=f"Unrecognised OPTIMADE field(s) in requested `response_fields`: {bad_optimade_fields}."
+            )
 
         if results:
             if isinstance(results, dict):
@@ -159,6 +186,7 @@ class EntryCollection(ABC):
             data_returned,
             more_data_available,
             exclude_fields,
+            include_fields,
         )
 
     @abstractmethod
