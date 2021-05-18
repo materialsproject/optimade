@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from optimade.models import OptimadeError, ErrorResponse, ErrorSource
 
 from optimade.server.config import CONFIG
+from optimade.server.exceptions import BadRequest
 from optimade.server.logger import LOGGER
 from optimade.server.routers.utils import meta_values
 
@@ -22,6 +23,19 @@ def general_exception(
     status_code: int = 500,  # A status_code in `exc` will take precedence
     errors: List[OptimadeError] = None,
 ) -> JSONResponse:
+    """Handle an exception
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+        status_code: The returned HTTP status code for the error response.
+        errors: List of error resources as defined in
+            [the OPTIMADE specification](https://github.com/Materials-Consortia/OPTIMADE/blob/develop/optimade.rst#json-response-schema-common-fields).
+
+    Returns:
+        A JSON HTTP response based on [`ErrorResponse`][optimade.models.responses.ErrorResponse].
+
+    """
     debug_info = {}
     if CONFIG.debug:
         tb = "".join(
@@ -65,15 +79,57 @@ def general_exception(
     )
 
 
-def http_exception_handler(request: Request, exc: StarletteHTTPException):
+def http_exception_handler(
+    request: Request, exc: StarletteHTTPException
+) -> JSONResponse:
+    """Handle a general HTTP Exception from Starlette
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+
+    Returns:
+        A JSON HTTP response through [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    """
     return general_exception(request, exc)
 
 
-def request_validation_exception_handler(request: Request, exc: RequestValidationError):
+def request_validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Handle a request validation error from FastAPI
+
+    `RequestValidationError` is a specialization of a general pydantic `ValidationError`.
+    Pass-through directly to [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+
+    Returns:
+        A JSON HTTP response through [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    """
     return general_exception(request, exc)
 
 
-def validation_exception_handler(request: Request, exc: ValidationError):
+def validation_exception_handler(
+    request: Request, exc: ValidationError
+) -> JSONResponse:
+    """Handle a general pydantic validation error
+
+    The pydantic `ValidationError` usually contains a list of errors,
+    this function extracts them and wraps them in the OPTIMADE specific error resource.
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+
+    Returns:
+        A JSON HTTP response through [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    """
     status = 500
     title = "ValidationError"
     errors = set()
@@ -90,7 +146,30 @@ def validation_exception_handler(request: Request, exc: ValidationError):
     return general_exception(request, exc, status_code=status, errors=list(errors))
 
 
-def grammar_not_implemented_handler(request: Request, exc: VisitError):
+def grammar_not_implemented_handler(request: Request, exc: VisitError) -> JSONResponse:
+    """Handle an error raised by Lark during filter transformation
+
+    All errors raised during filter transformation are wrapped in the Lark `VisitError`.
+    According to the OPTIMADE specification, these errors are repurposed to be 501 NotImplementedErrors.
+
+    For special exceptions, like [`BadRequest`][optimade.server.exceptions.BadRequest], we pass-through to
+    [`general_exception()`][optimade.server.exception_handlers.general_exception], since they should not
+    return a 501 NotImplementedError.
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+
+    Returns:
+        A JSON HTTP response through [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    """
+    pass_through_exceptions = (BadRequest,)
+
+    orig_exc = getattr(exc, "orig_exc", None)
+    if isinstance(orig_exc, pass_through_exceptions):
+        return general_exception(request, orig_exc)
+
     rule = getattr(exc.obj, "data", getattr(exc.obj, "type", str(exc)))
 
     status = 501
@@ -104,7 +183,17 @@ def grammar_not_implemented_handler(request: Request, exc: VisitError):
     return general_exception(request, exc, status_code=status, errors=[error])
 
 
-def not_implemented_handler(request: Request, exc: NotImplementedError):
+def not_implemented_handler(request: Request, exc: NotImplementedError) -> JSONResponse:
+    """Handle a standard NotImplementedError Python exception
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+
+    Returns:
+        A JSON HTTP response through [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    """
     status = 501
     title = "NotImplementedError"
     detail = str(exc)
@@ -112,7 +201,19 @@ def not_implemented_handler(request: Request, exc: NotImplementedError):
     return general_exception(request, exc, status_code=status, errors=[error])
 
 
-def general_exception_handler(request: Request, exc: Exception):
+def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Catch all Python Exceptions not handled by other exception handlers
+
+    Pass-through directly to [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    Parameters:
+        request: The HTTP request resulting in the exception being raised.
+        exc: The exception being raised.
+
+    Returns:
+        A JSON HTTP response through [`general_exception()`][optimade.server.exception_handlers.general_exception].
+
+    """
     return general_exception(request, exc)
 
 

@@ -57,6 +57,7 @@ class IndexInfoResource(BaseInfoResource):
         None, Dict[DefaultRelationship, IndexRelationship]
     ] = StrictField(
         ...,
+        title="Relationships",
         description="""Reference to the Links identifier object under the `links` endpoint that the provider has chosen as their 'default' OPTIMADE API database.
 A client SHOULD present this database as the first choice when an end-user chooses this provider.""",
     )

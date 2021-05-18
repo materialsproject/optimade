@@ -2,8 +2,8 @@ from typing import List
 
 from lark import v_args
 from elasticsearch_dsl import Q, Text, Keyword, Integer, Field
-from optimade.models import CHEMICAL_SYMBOLS, ATOMIC_NUMBERS
 from optimade.filtertransformers import BaseTransformer
+from optimade.server.exceptions import BadRequest
 
 __all__ = ("ElasticTransformer",)
 
@@ -13,7 +13,7 @@ _rev_cmp_operators = {">": "<", ">=": "<=", "<": ">", "<=": ">=", "=": "=", "!="
 _has_operators = {"ALL": "must", "ANY": "should"}
 _length_quantities = {
     "elements": "nelements",
-    "elements_rations": "nelements",
+    "elements_ratios": "nelements",
     "dimension_types": "dimension_types",
 }
 
@@ -109,9 +109,11 @@ class ElasticTransformer(BaseTransformer):
             return Q(query_type, **{field: value})
 
         if op == "!=":
-            return ~Q(  # pylint: disable=invalid-unary-operand-type
-                query_type, **{field: value}
-            )
+            # != queries must also include an existence check
+            # Note that for MongoDB, `$exists` will include null-valued fields,
+            # where as in ES `exists` excludes them.
+            # pylint: disable=invalid-unary-operand-type
+            return ~Q(query_type, **{field: value}) & Q("exists", field=field)
 
     def _has_query_op(self, quantities, op, predicate_zip_list):
         """
@@ -129,36 +131,50 @@ class ElasticTransformer(BaseTransformer):
             # in elastic search. Only supported for elements, where we can construct
             # an anonymous "formula" based on elements sorted by order number and
             # can do a = comparision to check if all elements are contained
-            if len(quantities) > 1:
-                raise Exception("HAS ONLY is not supported with zip")
-            quantity = quantities[0]
 
-            if quantity.has_only_quantity is None:
-                raise Exception("HAS ONLY is not supported by %s" % quantity.name)
+            # @ml-evs: Disabling this HAS ONLY workaround as tests are not passing
+            raise NotImplementedError(
+                "HAS ONLY queries are not currently supported by the Elasticsearch backend."
+            )
 
-            def values():
-                for predicates in predicate_zip_list:
-                    if len(predicates) != 1:
-                        raise Exception("Tuples not supported in HAS ONLY")
-                    op, value = predicates[0]
-                    if op != "=":
-                        raise Exception("Predicated not supported in HAS ONLY")
-                    if not isinstance(value, str):
-                        raise Exception("Only strings supported in HAS ONLY")
-                    yield value
+            # from optimade.models import CHEMICAL_SYMBOLS, ATOMIC_NUMBERS
 
-            try:
-                order_numbers = list([ATOMIC_NUMBERS[element] for element in values()])
-                order_numbers.sort()
-                value = "".join(
-                    [CHEMICAL_SYMBOLS[number - 1] for number in order_numbers]
-                )
-            except KeyError:
-                raise Exception("HAS ONLY is only supported for chemical symbols")
+            # if len(quantities) > 1:
+            #     raise NotImplementedError("HAS ONLY is not supported with zip")
+            # quantity = quantities[0]
 
-            return Q("term", **{quantity.has_only_quantity.name: value})
+            # if quantity.has_only_quantity is None:
+            #     raise NotImplementedError(
+            #         "HAS ONLY is not supported by %s" % quantity.name
+            #     )
+
+            # def values():
+            #     for predicates in predicate_zip_list:
+            #         if len(predicates) != 1:
+            #             raise NotImplementedError("Tuples not supported in HAS ONLY")
+            #         op, value = predicates[0]
+            #         if op != "=":
+            #             raise NotImplementedError(
+            #                 "Predicated not supported in HAS ONLY"
+            #             )
+            #         if not isinstance(value, str):
+            #             raise NotImplementedError("Only strings supported in HAS ONLY")
+            #         yield value
+
+            # try:
+            #     order_numbers = list([ATOMIC_NUMBERS[element] for element in values()])
+            #     order_numbers.sort()
+            #     value = "".join(
+            #         [CHEMICAL_SYMBOLS[number - 1] for number in order_numbers]
+            #     )
+            # except KeyError:
+            #     raise NotImplementedError(
+            #         "HAS ONLY is only supported for chemical symbols"
+            #     )
+
+            # return Q("term", **{quantity.has_only_quantity.name: value})
         else:
-            raise NotImplementedError
+            raise NotImplementedError(f"Unrecognised operation {op}.")
 
         queries = [
             self._has_query(quantities, predicates) for predicates in predicate_zip_list
@@ -171,7 +187,7 @@ class ElasticTransformer(BaseTransformer):
         for quantity pericate combination.
         """
         if len(quantities) != len(predicates):
-            raise Exception(
+            raise ValueError(
                 "Tuple length does not match: %s <o> %s "
                 % (":".join(quantities), ":".join(predicates))
             )
@@ -185,7 +201,7 @@ class ElasticTransformer(BaseTransformer):
             q.nested_quantity != nested_quantity for q in quantities
         )
         if nested_quantity is None or same_nested_quantity:
-            raise Exception(
+            raise NotImplementedError(
                 "Expression with tuples are only supported for %s"
                 % ", ".join(quantities)
             )
@@ -202,7 +218,7 @@ class ElasticTransformer(BaseTransformer):
         )
 
     def __default__(self, tree, children, *args, **kwargs):
-        """ Default behavior for rules that only replace one symbol with another """
+        """Default behavior for rules that only replace one symbol with another"""
         return children[0]
 
     def filter(self, args):
@@ -240,7 +256,7 @@ class ElasticTransformer(BaseTransformer):
     def constant_first_comparison(self, value, op, quantity):
         # constant_first_comparison: constant OPERATOR ( non_string_value | ...not_implemented_string )
         if not isinstance(quantity, Quantity):
-            raise Exception("Only quantities can be compared to constant values.")
+            raise TypeError("Only quantities can be compared to constant values.")
 
         return self._query_op(quantity, _rev_cmp_operators[op], value)
 
@@ -259,7 +275,9 @@ class ElasticTransformer(BaseTransformer):
 
         def query(quantity):
             if quantity.length_quantity is None:
-                raise Exception("LENGTH is not supported for %s" % quantity.name)
+                raise NotImplementedError(
+                    "LENGTH is not supported for %s" % quantity.name
+                )
             quantity = quantity.length_quantity
             return self._query_op(quantity, op, value)
 
@@ -311,12 +329,15 @@ class ElasticTransformer(BaseTransformer):
         return lambda quantity: self._has_query_op([quantity] + add_on, op, values)
 
     def property_zip_addon(self, args):
+        raise NotImplementedError("Correlated list queries are not supported.")
         return args
 
     def value_zip(self, args):
+        raise NotImplementedError("Correlated list queries are not supported.")
         return self.value_list(args)
 
     def value_zip_list(self, args):
+        raise NotImplementedError("Correlated list queries are not supported.")
         return args
 
     def value_list(self, args):
@@ -352,7 +373,7 @@ class ElasticTransformer(BaseTransformer):
         quantity_name = args[0]
 
         if quantity_name not in self.index_mapping:
-            raise Exception("%s is not a searchable quantity" % quantity_name)
+            raise BadRequest(detail=f"{quantity_name} is not a searchable quantity")
 
         quantity = self.index_mapping.get(quantity_name, None)
         if quantity is None:

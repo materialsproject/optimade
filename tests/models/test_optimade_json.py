@@ -1,4 +1,7 @@
-from optimade.models import DataType
+import pytest
+from pydantic import ValidationError
+
+from optimade.models import DataType, Provider
 
 
 def test_convert_python_types():
@@ -86,3 +89,36 @@ def test_get_values():
         "unknown",
     ]
     assert DataType.get_values() == sorted_data_types
+
+
+@pytest.mark.parametrize(
+    "prefix", ("exmpl", "exmpl_prefix", "exmpl123_prefix", "exmpl_")
+)
+def test_good_prefixes(prefix):
+    """Check that some example provider objects can be deserialized."""
+
+    provider = {
+        "name": "Example",
+        "description": "example",
+        "homepage": None,
+        "prefix": prefix,
+    }
+
+    assert Provider(**provider)
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    ("Example", "_exmpl", "123_exmpl", "", "example provider", "exampleProvider"),
+)
+def test_bad_prefixes(prefix):
+
+    provider = {
+        "name": "Example",
+        "description": "example",
+        "homepage": None,
+        "prefix": prefix,
+    }
+
+    with pytest.raises(ValidationError):
+        Provider(**provider)

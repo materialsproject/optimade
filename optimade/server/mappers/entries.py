@@ -1,4 +1,5 @@
 from typing import Tuple, Optional
+import warnings
 
 __all__ = ("BaseResourceMapper",)
 
@@ -37,8 +38,10 @@ class BaseResourceMapper:
 
     @classmethod
     def all_aliases(cls) -> Tuple[Tuple[str, str]]:
-        """Returns all of the associated aliases for this class,
-        including those defined by the server config.
+        """Returns all of the associated aliases for this entry type,
+        including those defined by the server config. The first member
+        of each tuple is the OPTIMADE-compliant field name, the second
+        is the backend-specific field name.
 
         Returns:
             A tuple of alias tuples.
@@ -89,8 +92,46 @@ class BaseResourceMapper:
         return dict(cls.all_length_aliases()).get(field, None)
 
     @classmethod
+    def get_backend_field(cls, optimade_field: str) -> str:
+        """Return the field name configured for the particular
+        underlying database for the passed OPTIMADE field name, that would
+        be used in an API filter.
+
+        Aliases are read from
+        [`all_aliases()`][optimade.server.mappers.entries.BaseResourceMapper.all_aliases].
+
+        If a dot-separated OPTIMADE field is provided, e.g., `species.mass`, only the first part will be mapped.
+        This means for an (OPTIMADE, DB) alias of (`species`, `kinds`), `get_backend_fields("species.mass")`
+        will return `kinds.mass`.
+
+        Arguments:
+            optimade_field: The OPTIMADE field to attempt to map to the backend-specific field.
+
+        Examples:
+            >>> get_backend_field("chemical_formula_anonymous")
+            'formula_anon'
+            >>> get_backend_field("formula_anon")
+            'formula_anon'
+            >>> get_backend_field("_exmpl_custom_provider_field")
+            'custom_provider_field'
+
+        Returns:
+            The mapped field name to be used in the query to the backend.
+
+        """
+        split = optimade_field.split(".")
+        alias = dict(cls.all_aliases()).get(split[0], None)
+        if alias is not None:
+            return alias + ("." + ".".join(split[1:]) if len(split) > 1 else "")
+        return optimade_field
+
+    @classmethod
     def alias_for(cls, field: str) -> str:
         """Return aliased field name.
+
+        !!! warning "Deprecated"
+            This method is deprecated could be removed without further warning. Please use
+            [`get_backend_field()`][optimade.server.mappers.entries.BaseResourceMapper.get_backend_field].
 
         Parameters:
             field: OPTIMADE field name.
@@ -99,26 +140,60 @@ class BaseResourceMapper:
             Aliased field as found in [`all_aliases()`][optimade.server.mappers.entries.BaseResourceMapper.all_aliases].
 
         """
-        split = field.split(".")
-        alias = dict(cls.all_aliases()).get(split[0], None)
-        if alias is not None:
-            return alias + ("." + ".".join(split[1:]) if len(split) > 1 else "")
-        return field
+        warnings.warn(
+            "The `.alias_for(...)` method is deprecated, please use `.get_backend_field(...)`.",
+            DeprecationWarning,
+        )
+        return cls.get_backend_field(field)
+
+    @classmethod
+    def get_optimade_field(cls, backend_field: str) -> str:
+        """Return the corresponding OPTIMADE field name for the underlying database field,
+        ready to be used to construct the OPTIMADE-compliant JSON response.
+
+        Aliases are read from
+        [`all_aliases()`][optimade.server.mappers.entries.BaseResourceMapper.all_aliases].
+
+        Arguments:
+            backend_field: The backend field to attempt to map to an OPTIMADE field.
+
+        Examples:
+            >>> get_optimade_field("chemical_formula_anonymous")
+            'chemical_formula_anonymous'
+            >>> get_optimade_field("formula_anon")
+            'chemical_formula_anonymous'
+            >>> get_optimade_field("custom_provider_field")
+            '_exmpl_custom_provider_field'
+
+        Returns:
+            The mapped field name to be used in an OPTIMADE-compliant response.
+
+        """
+        return {alias: real for real, alias in cls.all_aliases()}.get(
+            backend_field, backend_field
+        )
 
     @classmethod
     def alias_of(cls, field: str) -> str:
         """Return de-aliased field name, if it exists,
         otherwise return the input field name.
 
-        Args:
+        !!! warning "Deprecated"
+            This method is deprecated could be removed without further warning. Please use
+            [`get_optimade_field()`][optimade.server.mappers.entries.BaseResourceMapper.get_optimade_field].
+
+        Parameters:
             field: Field name to be de-aliased.
 
         Returns:
             De-aliased field name, falling back to returning `field`.
 
         """
-        field = field.split(".")[0]
-        return {alias: real for real, alias in cls.all_aliases()}.get(field, field)
+        warnings.warn(
+            "The `.alias_of(...)` method is deprecated, please use `.get_optimade_field(...)`.",
+            DeprecationWarning,
+        )
+        return cls.get_optimade_field(field)
 
     @classmethod
     def get_required_fields(cls) -> set:

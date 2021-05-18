@@ -6,6 +6,7 @@ This is an example implementation with example data.
 To implement your own index meta-database server see the documentation at https://optimade.org/optimade-python-tools.
 """
 import json
+import os
 import warnings
 
 from fastapi import FastAPI
@@ -23,13 +24,13 @@ from optimade.server.middleware import OPTIMADE_MIDDLEWARE
 from optimade.server.routers import index_info, links, versions
 from optimade.server.routers.utils import BASE_URL_PREFIXES
 
-if CONFIG.config_file is None:
+if os.getenv("OPTIMADE_CONFIG_FILE") is None:
     LOGGER.warn(
         f"Invalid config file or no config file provided, running server with default settings. Errors: "
         f"{[warnings.formatwarning(w.message, w.category, w.filename, w.lineno, '') for w in config_warnings]}"
     )
 else:
-    LOGGER.info(f"Loaded settings from {CONFIG.config_file}.")
+    LOGGER.info(f"Loaded settings from {os.getenv('OPTIMADE_CONFIG_FILE')}.")
 
 if CONFIG.debug:  # pragma: no cover
     LOGGER.info("DEBUG MODE")
@@ -51,7 +52,7 @@ This specification is generated using [`optimade-python-tools`](https://github.c
 )
 
 
-if not CONFIG.use_real_mongo and CONFIG.index_links_path.exists():
+if CONFIG.insert_test_data and CONFIG.index_links_path.exists():
     import bson.json_util
     from bson.objectid import ObjectId
     from optimade.server.routers.links import links_coll
@@ -67,22 +68,30 @@ if not CONFIG.use_real_mongo and CONFIG.index_links_path.exists():
         processed.append(db)
 
     LOGGER.debug(
-        "  Inserting index links into collection from %s...", CONFIG.index_links_path
-    )
-    links_coll.collection.insert_many(
-        bson.json_util.loads(bson.json_util.dumps(processed))
+        "Inserting index links into collection from %s...", CONFIG.index_links_path
     )
 
-    LOGGER.debug("  Adding Materials-Consortia providers to links from optimade.org...")
-    providers = get_providers(add_mongo_id=True)
-    for doc in providers:
-        links_coll.collection.replace_one(
-            filter={"_id": ObjectId(doc["_id"]["$oid"])},
-            replacement=bson.json_util.loads(bson.json_util.dumps(doc)),
-            upsert=True,
+    links_coll.insert(bson.json_util.loads(bson.json_util.dumps(processed)))
+
+    if CONFIG.database_backend.value in ("mongodb", "mongomock"):
+        LOGGER.debug(
+            "Adding Materials-Consortia providers to links from optimade.org..."
         )
+        providers = get_providers()
+        for doc in providers:
+            links_coll.collection.replace_one(
+                filter={"_id": ObjectId(doc["_id"]["$oid"])},
+                replacement=bson.json_util.loads(bson.json_util.dumps(doc)),
+                upsert=True,
+            )
 
-    LOGGER.debug("Done inserting index links!")
+        LOGGER.debug("Done inserting index links!")
+
+    else:
+        LOGGER.warning(
+            "Not inserting test data for index meta-database for backend %s",
+            CONFIG.database_backend.value,
+        )
 
 # Add CORS middleware first
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
@@ -101,7 +110,7 @@ for endpoint in (index_info, links, versions):
 
 
 def add_major_version_base_url(app: FastAPI):
-    """ Add mandatory endpoints to `/vMAJOR` base URL. """
+    """Add mandatory endpoints to `/vMAJOR` base URL."""
     for endpoint in (index_info, links):
         app.include_router(endpoint.router, prefix=BASE_URL_PREFIXES["major"])
 

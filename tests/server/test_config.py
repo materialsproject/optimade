@@ -127,3 +127,71 @@ def test_debug_is_respected_when_on(both_clients):
         assert f"_{CONFIG.provider.prefix}_traceback" in response["meta"]
     finally:
         CONFIG.debug = org_value
+
+
+def test_yaml_config_file():
+    """Test loading a YAML config file
+
+    First, pass a correctly formatted YAML file that only includes a single YAML document.
+    Secondly, pass a correctly formatted YAML file that includes two YAML docuements.
+
+    Expectation: The second test should fail to load with a warning, loading the default settings
+    instead. The first test should be fine.
+
+    NOTE: Since pytest loads a JSON config file, there's no need to test that further.
+    """
+    import tempfile
+    import pytest
+    from optimade.server.config import ServerConfig
+
+    yaml_content = """
+---
+aliases:
+  references:
+    last_modified: mtime
+debug: true
+provider_fields:
+  references:
+  - great_paper
+...
+"""
+    extra_yaml_content = """
+---
+debug: true
+...
+"""
+    org_env_var = os.getenv("OPTIMADE_CONFIG_FILE")
+
+    try:
+        with tempfile.NamedTemporaryFile("w+t", suffix=".yml") as config_file:
+            config_file.write(yaml_content)
+            config_file.seek(0, 0)  # Go to start of file
+
+            os.environ["OPTIMADE_CONFIG_FILE"] = str(Path(config_file.name).resolve())
+            CONFIG = ServerConfig()
+
+        assert CONFIG.aliases == {
+            "references": {"last_modified": "mtime"}
+        }, f"Config: {CONFIG.aliases}"
+        assert CONFIG.debug, f"Config: {CONFIG.debug}"
+        assert CONFIG.provider_fields == {
+            "references": ["great_paper"]
+        }, f"Config: {CONFIG.provider_fields}"
+
+        with tempfile.NamedTemporaryFile("w+t", suffix=".yml") as config_file:
+            config_file.write(yaml_content + extra_yaml_content)
+            config_file.seek(0, 0)  # Go to start of file
+
+            os.environ["OPTIMADE_CONFIG_FILE"] = str(Path(config_file.name).resolve())
+            with pytest.warns(UserWarning, match=r"^Unable to parse config file.*"):
+                CONFIG = ServerConfig()
+
+        assert CONFIG.aliases == {}, f"Config: {CONFIG.aliases}"
+        assert not CONFIG.debug, f"Config: {CONFIG.debug}"
+        assert CONFIG.provider_fields == {}, f"Config: {CONFIG.provider_fields}"
+
+    finally:
+        if org_env_var is not None:
+            os.environ["OPTIMADE_CONFIG_FILE"] = org_env_var
+        else:
+            assert os.getenv("OPTIMADE_CONFIG_FILE") is None

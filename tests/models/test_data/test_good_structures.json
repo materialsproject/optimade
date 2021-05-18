@@ -190,5 +190,37 @@
       {"name": "P", "chemical_symbols": ["P"], "concentration": [1.0] }
     ],
     "structure_features": ["site_attachments"]
+  },
+  {
+    "task_id": "db/1234567",
+    "type": "structure",
+    "last_modified": {
+      "$date": "2019-06-08T05:13:37.331Z"
+    },
+    "band_gap": 1.23456,
+    "chemsys": "C-H-Cl-N-Na-O-Os-P",
+    "elements": ["C", "Cl", "H", "N", "Na", "O", "Os", "P"],
+    "nelements": 8,
+    "nsites": 7,
+    "elements_ratios": [0.09090909091, 0.36363636363, 0.09090909091, 0.09090909091, 0.09090909091, 0.09090909091, 0.09090909091, 0.09090909091],
+    "chemical_formula_reduced": "CClH4NNaOOsP",
+    "chemical_formula_hill": "CH4ClNNaOOsP",
+    "chemical_formula_descriptive": "Methyl-ClNNaOOsP",
+    "formula_anonymous": "A4BCDEFGH",
+    "dimension_types": [1, 1, 1],
+    "nperiodic_dimensions": 3,
+    "lattice_vectors": [[4.0,0.0,0.0],[0.0, 4.0, 0.0],[0.0,1.0,4.0]],
+    "cartesian_site_positions": [ [0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0], [0,0,0] ],
+    "species_at_sites": ["ClI", "O", "N", "met", "Os", "Na", "P"],
+    "species": [
+      {"name": "ClI", "chemical_symbols": ["Cl", "I"], "concentration": [0.5, 0.5], "mass": [35.45, 126.90] },
+      {"name": "O", "chemical_symbols": ["O"], "concentration": [1.0] },
+      {"name": "N", "chemical_symbols": ["N"], "concentration": [1.0] },
+      {"name": "met", "chemical_symbols": ["C"], "concentration": [1.0], "attached": ["H"], "nattached": [4] },
+      {"name": "Os", "chemical_symbols": ["Os"], "concentration": [1.0] },
+      {"name": "Na", "chemical_symbols": ["Na"], "concentration": [1.0] },
+      {"name": "P", "chemical_symbols": ["P"], "concentration": [1.0] }
+    ],
+    "structure_features": ["disorder", "site_attachments"]
   }
 ]

@@ -14,7 +14,7 @@ class StrReprMixin(HTTPException):
     """
 
     def __str__(self):
-        return self.__repr__()
+        return self.detail if self.detail is not None else self.__repr__()
 
 
 class BadRequest(StrReprMixin, HTTPException):

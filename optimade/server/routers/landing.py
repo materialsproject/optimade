@@ -16,7 +16,7 @@ TEMPLATES = Jinja2Templates(directory=[template_dir])
 
 
 async def landing(request: Request):
-    """ Show a human-readable landing page when the base URL is accessed. """
+    """Show a human-readable landing page when the base URL is accessed."""
 
     meta = meta_values(request.url, 1, 1, more_data_available=False)
     major_version = __api_version__.split(".")[0]

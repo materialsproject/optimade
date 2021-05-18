@@ -44,6 +44,8 @@ class OptimadeTestClient(TestClient):
         if version:
             if not version.startswith("v") and not version.startswith("/v"):
                 version = f"/v{version}"
+            if version.startswith("v"):
+                version = f"/{version}"
             if re.match(r"/v[0-9](.[0-9]){0,2}", version) is None:
                 warnings.warn(
                     f"Invalid version passed to client: {version!r}. "
@@ -232,7 +234,7 @@ def client_factory():
 
 
 class NoJsonEndpointTests:
-    """ A simplified mixin class for tests on non-JSON endpoints. """
+    """A simplified mixin class for tests on non-JSON endpoints."""
 
     request_str: str = None
     response_cls: BaseModel = None

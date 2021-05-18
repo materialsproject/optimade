@@ -42,3 +42,10 @@ class QueryParamNotUsed(OptimadeWarning):
 class MissingExpectedField(OptimadeWarning):
     """A field was provided with a null value when a related field was provided
     with a value."""
+
+
+class TimestampNotRFCCompliant(OptimadeWarning):
+    """A timestamp has been used in a filter that contains microseconds and is thus not
+    RFC 3339 compliant. This may cause undefined behaviour in the query results.
+
+    """

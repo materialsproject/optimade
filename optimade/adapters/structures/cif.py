@@ -30,6 +30,7 @@ try:
     import numpy as np
 except ImportError:
     from warnings import warn
+    from optimade.adapters.warnings import AdapterPackageNotFound
 
     np = None
     NUMPY_NOT_FOUND = "NumPy not found, cannot convert structure to CIF"
@@ -52,7 +53,7 @@ def get_cif(  # pylint: disable=too-many-locals,too-many-branches
     """
     # NumPy is needed for calculations
     if globals().get("np", None) is None:
-        warn(NUMPY_NOT_FOUND)
+        warn(NUMPY_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     cif = """#

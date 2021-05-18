@@ -1,5 +1,6 @@
 """Test HandleApiHint middleware and the `api_hint` query parameter"""
 import pytest
+from urllib.parse import unquote
 
 from optimade.server.exceptions import VersionNotSupported
 from optimade.server.middleware import HandleApiHint
@@ -11,7 +12,7 @@ def test_correct_api_hint(both_clients, check_response):
 
     links_id = "index"
     major_version = BASE_URL_PREFIXES["major"][1:]  # Remove prefixed `/`
-    query_url = f"/links?api_hint={major_version}&filter=id={links_id}"
+    query_url = f'/links?api_hint={major_version}&filter=id="{links_id}"'
 
     check_response(
         request=query_url,
@@ -27,7 +28,7 @@ def test_incorrect_api_hint(both_clients, check_error_response):
     links_id = "index"
     incorrect_version = int(BASE_URL_PREFIXES["major"][len("/v") :]) + 1
     incorrect_version = f"v{incorrect_version}"
-    query_url = f"/links?api_hint={incorrect_version}&filter=id={links_id}"
+    query_url = f'/links?api_hint={incorrect_version}&filter=id="{links_id}"'
 
     with pytest.raises(VersionNotSupported):
         check_error_response(
@@ -52,21 +53,21 @@ def test_url_changes(both_clients, get_good_response):
 
     links_id = "index"
     major_version = BASE_URL_PREFIXES["major"][1:]  # Remove prefixed `/`
-    query_url = f"/links?filter=id={links_id}&api_hint={major_version}"
+    query_url = f'/links?filter=id="{links_id}"&api_hint={major_version}'
 
     response = get_good_response(query_url, server=both_clients, return_json=False)
 
     assert (
-        response.url
+        unquote(response.url)
         == f"{both_clients.base_url}{BASE_URL_PREFIXES['major']}{query_url.split('&')[0]}"
     )
 
     # Now to make sure the redirect would not happen when leaving out `api_hint`
-    query_url = f"/links?filter=id={links_id}"
+    query_url = f'/links?filter=id="{links_id}"'
 
     response = get_good_response(query_url, server=both_clients, return_json=False)
 
-    assert response.url == f"{both_clients.base_url}{query_url}"
+    assert unquote(response.url) == f"{both_clients.base_url}{query_url}"
 
 
 def test_is_versioned_base_url(both_clients):

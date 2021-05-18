@@ -1,6 +1,12 @@
-"""Make sure response_fields is handled correctly"""
+"""Make sure filters are handled correctly"""
+import pytest
+from optimade.server.config import CONFIG, SupportedBackend
 
 
+@pytest.mark.xfail(
+    CONFIG.database_backend == SupportedBackend.ELASTIC,
+    reason="Elasticsearch does not support queries on custom fields without configuration.",
+)
 def test_custom_field(check_response):
     request = '/structures?filter=_exmpl_chemsys="Ac"'
     expected_ids = ["mpf_1"]
@@ -8,7 +14,7 @@ def test_custom_field(check_response):
 
 
 def test_id(check_response):
-    request = "/structures?filter=id=mpf_2"
+    request = '/structures?filter=id="mpf_2"'
     expected_ids = ["mpf_2"]
     check_response(request, expected_ids)
 
@@ -45,18 +51,17 @@ def test_list_has(check_response):
 
 def test_page_limit(check_response):
     request = '/structures?filter=elements HAS "Ac"&page_limit=2'
-    expected_ids = ["mpf_1", "mpf_2"]
+    expected_ids = ["mpf_1", "mpf_110"]
     expected_return = 6
     check_response(request, expected_ids=expected_ids, expected_return=expected_return)
 
     request = '/structures?page_limit=2&filter=elements HAS "Ac"'
-    expected_ids = ["mpf_1", "mpf_2"]
+    expected_ids = ["mpf_1", "mpf_110"]
     expected_return = 6
     check_response(request, expected_ids=expected_ids, expected_return=expected_return)
 
 
 def test_page_limit_max(check_error_response):
-    from optimade.server.config import CONFIG
 
     request = f"/structures?page_limit={CONFIG.page_limit_max + 1}"
     check_error_response(
@@ -69,22 +74,29 @@ def test_page_limit_max(check_error_response):
 
 def test_value_list_operator(check_error_response):
     request = "/structures?filter=dimension_types HAS < 1"
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        expected_detail = "Unrecognised operation HAS <."
+    else:
+        expected_detail = "set_op_rhs not implemented for use with OPERATOR. Given: [Token('HAS', 'HAS'), Token('OPERATOR', '<'), 1]"
     check_error_response(
         request,
         expected_status=501,
         expected_title="NotImplementedError",
-        expected_detail="set_op_rhs not implemented for use with OPERATOR. Given: [Token('HAS', 'HAS'), Token('OPERATOR', '<'), 1]",
+        expected_detail=expected_detail,
     )
 
 
-def test_has_any_operator(check_error_response):
+def test_has_any_operator(check_response, check_error_response):
     request = "/structures?filter=dimension_types HAS ANY > 1"
-    check_error_response(
-        request,
-        expected_status=501,
-        expected_title="NotImplementedError",
-        expected_detail="OPERATOR > inside value_list [Token('OPERATOR', '>'), 1] not implemented.",
-    )
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_response(request, [])
+    else:
+        check_error_response(
+            request,
+            expected_status=501,
+            expected_title="NotImplementedError",
+            expected_detail="OPERATOR > inside value_list [Token('OPERATOR', '>'), 1] not implemented.",
+        )
 
 
 def test_list_has_all(check_response):
@@ -112,28 +124,47 @@ def test_list_length_basic(check_response):
     check_response(request, expected_ids)
 
 
-def test_list_length(check_response, check_error_response):
+def test_list_length_comparisons_aliased(check_response, check_error_response):
+    """Test whether list length comparisons work on fields that have
+    defined length aliases.
+
+    """
+
     request = "/structures?filter=elements LENGTH >= 9"
     expected_ids = ["mpf_3819"]
     check_response(request, expected_ids)
 
-    request = "/structures?filter=structure_features LENGTH > 0"
-    expected_ids = []
-    check_response(request, expected_ids)
-
-    request = "/structures?filter=structure_features LENGTH > 0"
-    expected_ids = []
-    check_response(request, expected_ids)
-
     request = "/structures?filter=cartesian_site_positions LENGTH > 43"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_3803", "mpf_3819", "mpf_551"])
     check_response(request, expected_ids, expected_as_is=True)
 
     request = "/structures?filter=species_at_sites LENGTH > 43"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_551", "mpf_3803", "mpf_3819"])
     check_response(request, expected_ids, expected_as_is=True)
 
     request = "/structures?filter=nsites LENGTH > 43"
+    expected_ids = []
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_error_response(
+            request,
+            expected_status=501,
+            expected_title="NotImplementedError",
+            expected_detail="LENGTH is not supported for nsites",
+        )
+    else:
+        check_response(request, expected_ids)
+
+
+@pytest.mark.xfail(
+    CONFIG.database_backend == SupportedBackend.ELASTIC,
+    reason="Elasticsearch does not support length queries on fields with no defined length alias.",
+)
+def test_list_length_comparisons_unaliased(check_response, check_error_response):
+    """Test whether list length comparisons work on fields that have no
+    defined length aliases.
+
+    """
+    request = "/structures?filter=structure_features LENGTH > 0"
     expected_ids = []
     check_response(request, expected_ids)
 
@@ -147,8 +178,12 @@ def test_list_length(check_response, check_error_response):
     )
 
 
+@pytest.mark.xfail(
+    CONFIG.database_backend == SupportedBackend.ELASTIC,
+    reason="Elasticsearch does not support HAS ONLY queries.",
+)
 def test_list_has_only(check_response):
-    """ Test HAS ONLY query on elements. """
+    """Test HAS ONLY query on elements."""
     request = '/structures?filter=elements HAS ONLY "Ac", "Mg"'
     expected_ids = ["mpf_23"]
     check_response(request, expected_ids)
@@ -161,33 +196,72 @@ def test_list_has_only(check_response):
 def test_list_correlated(check_error_response):
     request = '/structures?filter=elements:elements_ratios HAS "Ag":"0.2"'
     check_error_response(
-        request, expected_status=501, expected_title="NotImplementedError"
+        request,
+        expected_status=501,
+        expected_title="NotImplementedError",
+        expected_detail="Correlated list queries are not supported.",
     )
     # expected_ids = ["mpf_259"]
     # check_response(request, expected_ids)
 
 
+def test_timestamp_query(check_response):
+    from optimade.server.warnings import TimestampNotRFCCompliant
+
+    request = '/structures?filter=last_modified="2019-06-08T05:13:37.331Z"&page_limit=5'
+    expected_ids = ["mpf_1", "mpf_2", "mpf_3"]
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_response(request, expected_ids, expected_as_is=True)
+    else:
+        with pytest.warns(TimestampNotRFCCompliant):
+            check_response(request, expected_ids, expected_as_is=True)
+
+    request = '/structures?filter=last_modified<"2019-06-08T05:13:37.331Z"&page_limit=5'
+    expected_ids = ["mpf_3819"]
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_response(request, expected_ids, expected_as_is=True)
+    else:
+        with pytest.warns(TimestampNotRFCCompliant):
+            check_response(request, expected_ids, expected_as_is=True)
+
+    request = '/structures?filter=last_modified="2018-06-08T05:13:37.945Z"&page_limit=5'
+    expected_ids = ["mpf_3819"]
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_response(request, expected_ids, expected_as_is=True)
+    else:
+        with pytest.warns(TimestampNotRFCCompliant):
+            check_response(request, expected_ids, expected_as_is=True)
+
+    request = '/structures?filter=last_modified>"2018-06-08T05:13:37.945Z" AND last_modified<="2019-06-08T05:13:37.331Z"&page_limit=5'
+    expected_ids = ["mpf_1", "mpf_2", "mpf_3"]
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_response(request, expected_ids, expected_as_is=True)
+    else:
+        with pytest.warns(TimestampNotRFCCompliant):
+            check_response(request, expected_ids, expected_as_is=True)
+
+
 def test_is_known(check_response):
     request = "/structures?filter=nsites IS KNOWN AND nsites>=44"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_551", "mpf_3803", "mpf_3819"])
     check_response(request, expected_ids, expected_as_is=True)
 
     request = "/structures?filter=lattice_vectors IS KNOWN AND nsites>=44"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_551", "mpf_3803", "mpf_3819"])
     check_response(request, expected_ids, expected_as_is=True)
 
 
 def test_aliased_is_known(check_response):
     request = "/structures?filter=id IS KNOWN AND nsites>=44"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_551", "mpf_3803", "mpf_3819"])
     check_response(request, expected_ids, expected_as_is=True)
 
     request = "/structures?filter=chemical_formula_reduced IS KNOWN AND nsites>=44"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_551", "mpf_3803", "mpf_3819"])
     check_response(request, expected_ids, expected_as_is=True)
 
     request = "/structures?filter=chemical_formula_descriptive IS KNOWN AND nsites>=44"
-    expected_ids = ["mpf_551", "mpf_3803", "mpf_3819"]
+    expected_ids = sorted(["mpf_551", "mpf_3803", "mpf_3819"])
     check_response(request, expected_ids, expected_as_is=True)
 
 
@@ -197,7 +271,7 @@ def test_aliased_fields(check_response):
     check_response(request, expected_ids, expected_as_is=True)
 
     request = '/structures?filter=chemical_formula_anonymous CONTAINS "A2BC"'
-    expected_ids = ["mpf_2", "mpf_3", "mpf_110"]
+    expected_ids = ["mpf_110", "mpf_2", "mpf_3"]
     check_response(request, expected_ids, expected_as_is=True)
 
 
@@ -298,8 +372,17 @@ def test_brackets(check_response):
 
 
 def test_filter_on_relationships(check_response, check_error_response):
+
     request = '/structures?filter=references.id HAS "dummy/2019"'
     expected_ids = ["mpf_3819"]
+    if CONFIG.database_backend == SupportedBackend.ELASTIC:
+        check_error_response(
+            request,
+            expected_status=400,
+            expected_title="Bad Request",
+            expected_detail="references is not a searchable quantity",
+        )
+        pytest.xfail("Elasticsearch backend does not support relationship filtering.")
     check_response(request, expected_ids)
 
     request = '/structures?filter=references.id HAS ANY "dummy/2019", "dijkstra1968"'

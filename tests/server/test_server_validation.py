@@ -1,7 +1,5 @@
-import os
 import json
 import dataclasses
-from traceback import print_exc
 
 import pytest
 
@@ -14,7 +12,6 @@ def test_with_validator(both_fake_remote_clients):
     validator = ImplementationValidator(
         client=both_fake_remote_clients,
         index=both_fake_remote_clients.app == app,
-        verbosity=5,
     )
 
     validator.validate_implementation()
@@ -22,7 +19,7 @@ def test_with_validator(both_fake_remote_clients):
 
 
 def test_with_validator_json_response(both_fake_remote_clients, capsys):
-    """ Test that the validator writes compliant JSON when requested. """
+    """Test that the validator writes compliant JSON when requested."""
     from optimade.server.main_index import app
 
     validator = ImplementationValidator(
@@ -34,38 +31,18 @@ def test_with_validator_json_response(both_fake_remote_clients, capsys):
 
     captured = capsys.readouterr()
     json_response = json.loads(captured.out)
-    assert json_response["failure_count"] == 0
-    assert json_response["internal_failure_count"] == 0
-    assert json_response["optional_failure_count"] == 0
-    assert validator.results.failure_count == 0
-    assert validator.results.internal_failure_count == 0
-    assert validator.results.optional_failure_count == 0
-    assert dataclasses.asdict(validator.results) == json_response
-
+    assert json_response["failure_count"] == 0, json_response
+    assert json_response["internal_failure_count"] == 0, json_response
+    assert json_response["optional_failure_count"] == 0, json_response
+    assert validator.results.failure_count == 0, json_response
+    assert validator.results.internal_failure_count == 0, json_response
+    assert validator.results.optional_failure_count == 0, json_response
+    assert dataclasses.asdict(validator.results) == json_response, json_response
     assert validator.valid
 
 
-def test_mongo_backend_package_used():
-    import pymongo
-    import mongomock
-    from optimade.server.entry_collections import client
-
-    force_mongo_env_var = os.environ.get("OPTIMADE_CI_FORCE_MONGO", None)
-    if force_mongo_env_var is None:
-        return
-
-    if int(force_mongo_env_var) == 1:
-        assert issubclass(client.__class__, pymongo.MongoClient)
-    elif int(force_mongo_env_var) == 0:
-        assert issubclass(client.__class__, mongomock.MongoClient)
-    else:
-        raise pytest.fail(
-            "The environment variable OPTIMADE_CI_FORCE_MONGO cannot be parsed as an int."
-        )
-
-
-def test_as_type_with_validator(client):
-    import unittest
+def test_as_type_with_validator(client, capsys):
+    from unittest.mock import patch, Mock
 
     test_urls = {
         f"{client.base_url}/structures": "structures",
@@ -75,18 +52,24 @@ def test_as_type_with_validator(client):
         f"{client.base_url}/info": "info",
         f"{client.base_url}/links": "links",
     }
-    with unittest.mock.patch(
-        "requests.get", unittest.mock.Mock(side_effect=client.get)
-    ):
+    with patch("requests.get", Mock(side_effect=client.get)):
         for url, as_type in test_urls.items():
             validator = ImplementationValidator(
-                base_url=url, as_type=as_type, verbosity=5
+                base_url=url, as_type=as_type, respond_json=True
             )
-            try:
-                validator.validate_implementation()
-            except Exception:
-                print_exc()
+            validator.validate_implementation()
             assert validator.valid
+
+            captured = capsys.readouterr()
+            json_response = json.loads(captured.out)
+
+            assert json_response["failure_count"] == 0
+            assert json_response["internal_failure_count"] == 0
+            assert json_response["optional_failure_count"] == 0
+            assert validator.results.failure_count == 0
+            assert validator.results.internal_failure_count == 0
+            assert validator.results.optional_failure_count == 0
+            assert dataclasses.asdict(validator.results) == json_response
 
 
 def test_query_value_formatting(client):

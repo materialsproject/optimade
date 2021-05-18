@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
 
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
 
@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
       with:
         submodules: true
 
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
 
@@ -62,12 +62,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
       with:
         submodules: true
 
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
 
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
       with:
         submodules: true
 
@@ -105,7 +105,7 @@ jobs:
         sleep 15
 
     - name: Test server, including OPTIONAL base URLs
-      uses: Materials-Consortia/optimade-validator-action@v2
+      uses: Materials-Consortia/optimade-validator-action@v2.5.0
       with:
         port: 3213
         path: /
@@ -119,7 +119,7 @@ jobs:
         sleep 15
 
     - name: Test index server, including OPTIONAL base URLs
-      uses: Materials-Consortia/optimade-validator-action@v2
+      uses: Materials-Consortia/optimade-validator-action@v2.5.0
       with:
         port: 3214
         path: /
@@ -141,7 +141,7 @@ jobs:
 
     services:
       mongo:
-        image: mongo:4.2
+        image: mongo:4
         ports:
         - 27017:27017
       postgres:
@@ -156,14 +156,23 @@ jobs:
           --health-retries 5
         ports:
         - 5432:5432
+      elasticsearch:
+        image: elasticsearch:6.8.13
+        ports:
+          - 9200:9200
+          - 9300:9300
+        env:
+          discovery.type: single-node
+
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
       with:
         submodules: true
+        fetch-depth: 2
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: ${{ matrix.python-version }}
 
@@ -175,20 +184,28 @@ jobs:
         pip install -r requirements.txt
         pip install -r requirements-dev.txt
 
-    - name: Run server tests (using a real MongoDB)
-      run: pytest -rs -vvv --cov=./optimade/ --cov-report=xml tests/server
-      env:
-        OPTIMADE_CI_FORCE_MONGO: 1
-
     - name: Run all tests (using `mongomock`)
-      run: pytest -rs -vvv --cov=./optimade/ --cov-report=xml --cov-append tests/
+      run: pytest -rs -vvv --cov=./optimade/ --cov-report=xml tests/
       env:
-        OPTIMADE_CI_FORCE_MONGO: 0
+        OPTIMADE_DATABASE_BACKEND: 'mongomock'
+
+
+    - name: Run server tests (using a real MongoDB)
+      run: pytest -rs -vvv --cov=./optimade/ --cov-report=xml --cov-append tests/server
+      env:
+        OPTIMADE_DATABASE_BACKEND: 'mongodb'
+
+    - name: Run server tests (using Elasticsearch)
+      run: pytest -rs -vvv --cov=./optimade/ --cov-report=xml --cov-append tests/server
+      env:
+        OPTIMADE_DATABASE_BACKEND: 'elastic'
 
     - name: Install adapter conversion dependencies
       run: |
         pip install -r requirements-client.txt
         # AiiDA-specific
+        # sqlalchemy install is temporary and has not been fixed for Python 3.6 versions
+        if [ "${{ matrix.python-version }}" == "3.6" ]; then pip install sqlalchemy==1.3.23; fi
         reentry scan
 
     - name: Setup up environment for AiiDA
@@ -199,13 +216,29 @@ jobs:
     - name: Run previously skipped tests for adapter conversion
       run: pytest -rs -vvv --cov=./optimade/ --cov-report=xml --cov-append tests/adapters/
 
-    - name: Run tests for validator only to assess coverage
+    - name: Run tests for validator only to assess coverage (mongomock)
       if: matrix.python-version == 3.8
-      run: pytest -rs --cov=./optimade/ --cov-report=xml:validator_cov.xml tests/server/test_server_validation.py
+      run: pytest -rs --cov=./optimade/ --cov-report=xml:validator_cov.xml --cov-append tests/server/test_server_validation.py
+      env:
+        OPTIMADE_DATABASE_BACKEND: 'mongomock'
+
+    - name: Run tests for validator only to assess coverage (Elasticsearch)
+      if: matrix.python-version == 3.8
+      run: pytest -rs --cov=./optimade/ --cov-report=xml:validator_cov.xml --cov-append tests/server/test_server_validation.py
+      env:
+        OPTIMADE_DATABASE_BACKEND: 'elastic'
+        OPTIMADE_INSERT_TEST_DATA: false # Must be specified as previous steps will have already inserted the test data
+
+    - name: Run tests for validator only to assess coverage (MongoDB)
+      if: matrix.python-version == 3.8
+      run: pytest -rs --cov=./optimade/ --cov-report=xml:validator_cov.xml --cov-append tests/server/test_server_validation.py
+      env:
+        OPTIMADE_DATABASE_BACKEND: 'mongodb'
+        OPTIMADE_INSERT_TEST_DATA: false # Must be specified as previous steps will have already inserted the test data
 
     - name: Upload coverage to Codecov
       if: matrix.python-version == 3.8 && github.repository == 'Materials-Consortia/optimade-python-tools'
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v1.5.0
       with:
         name: project
         file: ./coverage.xml
@@ -213,7 +246,7 @@ jobs:
 
     - name: Upload validator coverage to Codecov
       if: matrix.python-version == 3.8 && github.repository == 'Materials-Consortia/optimade-python-tools'
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v1.5.0
       with:
         name: validator
         file: ./validator_cov.xml
@@ -223,11 +256,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v2.3.4
       with:
         submodules: true
 
-    - uses: actions/setup-python@v2
+    - uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
 
@@ -237,20 +270,23 @@ jobs:
         pip install -U setuptools
         pip install -e .
         pip install -r requirements.txt
+        pip install -r requirements-dev.txt
         pip install -r requirements-docs.txt
 
     - name: Build
-      run: mkdocs build --strict --verbose
+      run: |
+        invoke create-api-reference-docs
+        mkdocs build --strict --verbose
 
   test_build:
     runs-on: ubuntu-latest
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.4
 
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
 

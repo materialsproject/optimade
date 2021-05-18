@@ -7,15 +7,16 @@ For more information on the AiiDA code see [their website](http://www.aiida.net)
 
 This conversion function relies on the [`aiida-core`](https://github.com/aiidateam/aiida-core) package.
 """
+from warnings import warn
+
 from optimade.models import StructureResource as OptimadeStructure
 
+from optimade.adapters.warnings import AdapterPackageNotFound, ConversionWarning
 from optimade.adapters.structures.utils import pad_cell
 
 try:
     from aiida.orm.nodes.data.structure import StructureData, Kind, Site
 except (ImportError, ModuleNotFoundError):
-    from warnings import warn
-
     StructureData = type("StructureData", (), {})
     AIIDA_NOT_FOUND = (
         "AiiDA not found, cannot convert structure to an AiiDA StructureData"
@@ -36,7 +37,7 @@ def get_aiida_structure_data(optimade_structure: OptimadeStructure) -> Structure
 
     """
     if "optimade.adapters" in repr(globals().get("StructureData")):
-        warn(AIIDA_NOT_FOUND)
+        warn(AIIDA_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     attributes = optimade_structure.attributes
@@ -49,6 +50,7 @@ def get_aiida_structure_data(optimade_structure: OptimadeStructure) -> Structure
     for kind in attributes.species:
         symbols = []
         concentration = []
+        mass = 0.0
         for index, chemical_symbol in enumerate(kind.chemical_symbols):
             # NOTE: The non-chemical element identifier "X" is identical to how AiiDA handles this,
             # so it will be treated the same as any other true chemical identifier.
@@ -60,12 +62,21 @@ def get_aiida_structure_data(optimade_structure: OptimadeStructure) -> Structure
                 symbols.append(chemical_symbol)
                 concentration.append(kind.concentration[index])
 
-        # AiiDA needs a definition for the mass, and for it to be > 0
-        # mass is OPTIONAL for OPTIMADE structures
-        mass = kind.mass if kind.mass else 1
+                # AiiDA needs a definition for the mass, and for it to be > 0
+                # mass is OPTIONAL for OPTIMADE structures
+                if kind.mass:
+                    mass += kind.concentration[index] * kind.mass[index]
+
+        if not mass:
+            warn(
+                f"No mass defined for <species(name={kind.name!r})>, will default to setting mass to 1.0.",
+                ConversionWarning,
+            )
 
         structure.append_kind(
-            Kind(symbols=symbols, weights=concentration, mass=mass, name=kind.name)
+            Kind(
+                symbols=symbols, weights=concentration, mass=mass or 1.0, name=kind.name
+            )
         )
 
     # Add Sites

@@ -1,21 +1,4 @@
-from datetime import datetime, timezone
-
 import pytest
-
-from optimade.server.warnings import FieldValueNotRecognized
-
-
-@pytest.fixture(scope="module")
-def structures():
-    """Get structures_coll collection"""
-    from optimade.server.routers import structures_coll
-
-    return structures_coll
-
-
-def fmt_datetime(object_: datetime) -> str:
-    """Parse datetime into pydantic's JSON encoded datetime string"""
-    return object_.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def test_int_asc(get_good_response, structures):
@@ -23,8 +6,7 @@ def test_int_asc(get_good_response, structures):
     limit = 5
 
     request = f"/structures?sort=nelements&page_limit={limit}"
-    data = structures.collection.find(sort=[("nelements", 1)], limit=limit)
-    expected_nelements = [_["nelements"] for _ in data]
+    expected_nelements = sorted([doc["nelements"] for doc in structures])[:limit]
 
     response = get_good_response(request)
     nelements_list = [
@@ -38,8 +20,9 @@ def test_int_desc(get_good_response, structures):
     limit = 5
 
     request = f"/structures?sort=-nelements&page_limit={limit}"
-    data = structures.collection.find(sort=[("nelements", -1)], limit=limit)
-    expected_nelements = [_["nelements"] for _ in data]
+    expected_nelements = sorted([doc["nelements"] for doc in structures], reverse=True)[
+        :limit
+    ]
 
     response = get_good_response(request)
     nelements_list = [
@@ -53,8 +36,7 @@ def test_str_asc(check_response, structures):
     limit = 5
 
     request = f"/structures?sort=id&page_limit={limit}"
-    data = structures.collection.find(sort=[("task_id", 1)])
-    expected_ids = [_["task_id"] for _ in data]
+    expected_ids = sorted([doc["task_id"] for doc in structures])
     check_response(
         request,
         expected_ids=expected_ids,
@@ -67,8 +49,7 @@ def test_str_desc(check_response, structures):
     limit = 5
 
     request = f"/structures?sort=-id&page_limit={limit}"
-    data = structures.collection.find(sort=[("task_id", -1)])
-    expected_ids = [_["task_id"] for _ in data]
+    expected_ids = sorted([doc["task_id"] for doc in structures], reverse=True)
     check_response(
         request,
         expected_ids=expected_ids,
@@ -80,16 +61,18 @@ def test_str_desc(check_response, structures):
 def test_datetime_asc(get_good_response, structures):
     """Ascending sort (datetime)"""
     limit = 5
+    offset = 10
 
-    request = f"/structures?sort=last_modified&page_limit={limit}"
-    data = structures.collection.find(sort=[("last_modified", 1)], limit=limit)
-    expected_last_modified = [fmt_datetime(_["last_modified"]) for _ in data]
+    request = f"/structures?sort=last_modified&page_limit={limit}&page_offset={offset}"
+    # _sorted_structures = sorted(structures, key=lambda x: x["task_id"], reverse=True)
+    expected_last_modified = sorted(structures, key=lambda x: x["last_modified"])[
+        offset : offset + limit
+    ]
+    expected_last_modified_ids = [doc["task_id"] for doc in expected_last_modified]
 
     response = get_good_response(request)
-    last_modified_list = [
-        struct.get("attributes", {}).get("last_modified") for struct in response["data"]
-    ]
-    assert last_modified_list == expected_last_modified
+    last_modified_list = [struct.get("id") for struct in response["data"]]
+    assert last_modified_list == expected_last_modified_ids
 
 
 def test_datetime_desc(get_good_response, structures):
@@ -97,18 +80,18 @@ def test_datetime_desc(get_good_response, structures):
     limit = 5
 
     request = f"/structures?sort=-last_modified&page_limit={limit}"
-    data = structures.collection.find(sort=[("last_modified", -1)], limit=limit)
-    expected_last_modified = [fmt_datetime(_["last_modified"]) for _ in data]
+    expected_last_modified = sorted(
+        structures, key=lambda x: (x["last_modified"], x["task_id"]), reverse=True
+    )[:limit]
+    expected_last_modified = [doc["task_id"] for doc in expected_last_modified]
 
     response = get_good_response(request)
-    last_modified_list = [
-        struct.get("attributes", {}).get("last_modified") for struct in response["data"]
-    ]
+    last_modified_list = [struct.get("id") for struct in response["data"]]
     assert last_modified_list == expected_last_modified
 
 
 def test_unknown_field_errors(check_error_response):
-    """ If any completely unknown field is provided, check 400: Bad Request is returned. """
+    """If any completely unknown field is provided, check 400: Bad Request is returned."""
     limit = 5
     request = f"/structures?sort=field_that_does_not_exist&page_limit={limit}"
     check_error_response(
@@ -145,11 +128,12 @@ def test_unknown_field_errors(check_error_response):
 
 
 def test_unknown_field_prefixed(get_good_response, structures):
-    """ If any other-provider-specific fields are requested, return a warning but still sort. """
+    """If any other-provider-specific fields are requested, return a warning but still sort."""
+    from optimade.server.warnings import FieldValueNotRecognized
+
     limit = 5
     request = f"/structures?sort=_exmpl3_field_that_does_not_exist,nelements&page_limit={limit}"
-    data = structures.collection.find(sort=[("nelements", 1)], limit=limit)
-    expected_nelements = [_["nelements"] for _ in data]
+    expected_nelements = sorted([doc["nelements"] for doc in structures])[:limit]
     expected_detail = (
         "Unable to sort on unknown field '_exmpl3_field_that_does_not_exist'"
     )

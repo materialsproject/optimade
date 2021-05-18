@@ -37,13 +37,22 @@ def test_null_lattice_vectors(null_lattice_vector_structure):
 
 def test_special_species(SPECIAL_SPECIES_STRUCTURES):
     """Make sure vacancies and non-chemical symbols ("X") are handled"""
+    from optimade.adapters.warnings import ConversionWarning
+
     for special_structure in SPECIAL_SPECIES_STRUCTURES:
         structure = Structure(special_structure)
 
-        aiida_structure = get_aiida_structure_data(structure)
+        if structure.attributes.species[0].mass:
+            aiida_structure = get_aiida_structure_data(structure)
+        else:
+            with pytest.warns(
+                ConversionWarning, match=r".*will default to setting mass to 1\.0\.$"
+            ):
+                aiida_structure = get_aiida_structure_data(structure)
 
         assert isinstance(aiida_structure, StructureData)
 
+        # Test species.chemical_symbols
         if "vacancy" in structure.attributes.species[0].chemical_symbols:
             assert aiida_structure.has_vacancies
             assert not aiida_structure.is_alloy
@@ -53,3 +62,23 @@ def test_special_species(SPECIAL_SPECIES_STRUCTURES):
         else:
             assert not aiida_structure.has_vacancies
             assert not aiida_structure.is_alloy
+
+        # Test species.mass
+        if structure.attributes.species[0].mass:
+            if len(structure.attributes.species[0].mass) > 1:
+                assert aiida_structure.kinds[0].mass == sum(
+                    [
+                        conc * mass
+                        for conc, mass in zip(
+                            structure.attributes.species[0].concentration,
+                            structure.attributes.species[0].mass,
+                        )
+                    ]
+                )
+            else:
+                assert (
+                    aiida_structure.kinds[0].mass
+                    == structure.attributes.species[0].mass[0]
+                )
+        else:
+            assert aiida_structure.kinds[0].mass == 1.0

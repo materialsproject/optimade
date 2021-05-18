@@ -5,7 +5,7 @@ The server is based on MongoDB, using either `pymongo` or `mongomock`.
 This is an example implementation with example data.
 To implement your own server see the documentation at https://optimade.org/optimade-python-tools.
 """
-
+import os
 import warnings
 
 from fastapi import FastAPI
@@ -17,7 +17,7 @@ with warnings.catch_warnings(record=True) as w:
     config_warnings = w
 
 from optimade import __api_version__, __version__
-from optimade.server.entry_collections import MongoCollection
+from optimade.server.entry_collections import EntryCollection
 from optimade.server.logger import LOGGER
 from optimade.server.exception_handlers import OPTIMADE_EXCEPTIONS
 from optimade.server.middleware import OPTIMADE_MIDDLEWARE
@@ -33,13 +33,13 @@ from optimade.server.routers import (
 from optimade.server.routers.utils import BASE_URL_PREFIXES
 
 
-if CONFIG.config_file is None:
+if os.getenv("OPTIMADE_CONFIG_FILE") is None:
     LOGGER.warn(
         f"Invalid config file or no config file provided, running server with default settings. Errors: "
         f"{[warnings.formatwarning(w.message, w.category, w.filename, w.lineno, '') for w in config_warnings]}"
     )
 else:
-    LOGGER.info(f"Loaded settings from {CONFIG.config_file}.")
+    LOGGER.info(f"Loaded settings from {os.getenv('OPTIMADE_CONFIG_FILE')}.")
 
 if CONFIG.debug:  # pragma: no cover
     LOGGER.info("DEBUG MODE")
@@ -59,20 +59,23 @@ This specification is generated using [`optimade-python-tools`](https://github.c
 )
 
 
-if not CONFIG.use_real_mongo:
+if CONFIG.insert_test_data:
     import bson.json_util
     from bson.objectid import ObjectId
     import optimade.server.data as data
     from optimade.server.routers import ENTRY_COLLECTIONS
     from optimade.server.routers.utils import get_providers
 
-    def load_entries(endpoint_name: str, endpoint_collection: MongoCollection):
+    def load_entries(endpoint_name: str, endpoint_collection: EntryCollection):
         LOGGER.debug("Loading test %s...", endpoint_name)
 
-        endpoint_collection.collection.insert_many(getattr(data, endpoint_name, []))
-        if endpoint_name == "links":
+        endpoint_collection.insert(getattr(data, endpoint_name, []))
+        if (
+            CONFIG.database_backend.value in ("mongomock", "mongodb")
+            and endpoint_name == "links"
+        ):
             LOGGER.debug(
-                "  Adding Materials-Consortia providers to links from optimade.org"
+                "Adding Materials-Consortia providers to links from optimade.org"
             )
             providers = get_providers(add_mongo_id=True)
             for doc in providers:
@@ -103,7 +106,7 @@ for endpoint in (info, links, references, structures, landing, versions):
 
 
 def add_major_version_base_url(app: FastAPI):
-    """ Add mandatory vMajor endpoints, i.e. all except versions. """
+    """Add mandatory vMajor endpoints, i.e. all except versions."""
     for endpoint in (info, links, references, structures, landing):
         app.include_router(endpoint.router, prefix=BASE_URL_PREFIXES["major"])
 

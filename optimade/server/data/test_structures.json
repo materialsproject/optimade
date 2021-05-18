@@ -3,6 +3,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700d02"
     },
+    "assemblies": null,
     "chemsys": "Ac",
     "cartesian_site_positions": [
       [
@@ -78,6 +79,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700d03"
     },
+    "assemblies": null,
     "chemsys": "Ac-Ag-Ir",
     "cartesian_site_positions": [
       [
@@ -193,6 +195,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700d04"
     },
+    "assemblies": null,
     "chemsys": "Ac-Ag-Pb",
     "cartesian_site_positions": [
       [
@@ -308,6 +311,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700d18"
     },
+    "assemblies": null,
     "chemsys": "Ac-Mg",
     "cartesian_site_positions": [
       [
@@ -396,6 +400,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700d1f"
     },
+    "assemblies": null,
     "chemsys": "Ac-O",
     "cartesian_site_positions": [
       [
@@ -496,6 +501,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700d6f"
     },
+    "assemblies": null,
     "chemsys": "Ac-Cu-F-O",
     "cartesian_site_positions": [
       [
@@ -618,6 +624,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700dc9"
     },
+    "assemblies": null,
     "chemsys": "Ag",
     "cartesian_site_positions": [
       [
@@ -683,6 +690,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700ddd"
     },
+    "assemblies": null,
     "chemsys": "Ag-Br-Cl-Te",
     "cartesian_site_positions": [
       [
@@ -871,6 +879,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700e04"
     },
+    "assemblies": null,
     "chemsys": "Ag-C-Cl-N-O-S",
     "cartesian_site_positions": [
       [
@@ -1045,6 +1054,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700e11"
     },
+    "assemblies": null,
     "chemsys": "Ag-C-Cl-H-N",
     "cartesian_site_positions": [
       [
@@ -1292,6 +1302,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700e15"
     },
+    "assemblies": null,
     "chemsys": "Ag-C-H-N-O",
     "cartesian_site_positions": [
       [
@@ -1545,6 +1556,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700e1a"
     },
+    "assemblies": null,
     "chemsys": "Ag-C-Cl-H-N-O-S",
     "cartesian_site_positions": [
       [
@@ -1808,6 +1820,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700ebf"
     },
+    "assemblies": null,
     "chemsys": "Ag-Br-Cl-Hg-I-S",
     "cartesian_site_positions": [
       [
@@ -2030,6 +2043,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700f28"
     },
+    "assemblies": null,
     "chemsys": "Ag-B-C-Cl-H-N-O-P",
     "cartesian_site_positions": [
       [
@@ -2610,6 +2624,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410700f79"
     },
+    "assemblies": null,
     "chemsys": "Ag-C-Cl-H-N-O-S",
     "cartesian_site_positions": [
       [
@@ -2909,6 +2924,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410701bdc"
     },
+    "assemblies": null,
     "chemsys": "Ba-Ce-Fe-H-Na-O-Si-Ti",
     "cartesian_site_positions": [
       [
@@ -3309,6 +3325,7 @@
     "_id": {
       "$oid": "5cfb441f053b174410701bec"
     },
+    "assemblies": null,
     "chemsys": "Ba-F-H-Mn-Na-O-Re-Si-Ti",
     "cartesian_site_positions": [
       [
@@ -3562,7 +3579,7 @@
     ],
     "formula_anonymous": "A26B8C2D2E2FGHI",
     "last_modified": {
-      "$date": "2019-06-08T05:13:37.945Z"
+      "$date": "2018-06-08T05:13:37.945Z"
     },
     "lattice_vectors": [
       [

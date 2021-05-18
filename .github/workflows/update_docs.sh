@@ -10,7 +10,7 @@ invoke create-api-reference-docs --pre-clean
 
 echo -e "\n-o- Commit update - API Reference -o-"
 git add docs/api_reference
-if [ -n "$(git status --porcelain --untracked-files=no --ignored=no)" ]; then
+if [ -n "$(git status --porcelain --untracked-files=no --ignored=no docs/api_reference)" ]; then
     # Only commit if there's something to commit (git will return non-zero otherwise)
     git commit -m "Release ${GITHUB_REF#refs/tags/} - API Reference"
 fi

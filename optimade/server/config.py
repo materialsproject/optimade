@@ -1,32 +1,52 @@
 # pylint: disable=no-self-argument
 from enum import Enum
-import json
+from pathlib import Path
 import warnings
-from typing import Optional, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
-from pathlib import Path
 
 from pydantic import (  # pylint: disable=no-name-in-module
+    AnyHttpUrl,
     BaseSettings,
     Field,
     root_validator,
-    AnyHttpUrl,
     validator,
 )
+from pydantic.env_settings import SettingsSourceCallable
 
 from optimade import __version__
 from optimade.models import Implementation, Provider
 
 
-DEFAULT_CONFIG_FILE_PATH = str(Path.home().joinpath(".optimade.json"))
+DEFAULT_CONFIG_FILE_PATH: str = str(Path.home().joinpath(".optimade.json"))
+"""Default configuration file path.
+
+This variable is used as the fallback value if the environment variable `OPTIMADE_CONFIG_FILE` is
+not set.
+
+!!! note
+    It is set to: `pathlib.Path.home()/.optimade.json`
+
+    For Unix-based systems (Linux) this will be equivalent to `~/.optimade.json`.
+
+"""
 
 
 class LogLevel(Enum):
-    """Replication of logging LogLevels"""
+    """Replication of logging LogLevels
+
+    - `notset`
+    - `debug`
+    - `info`
+    - `warning`
+    - `error`
+    - `critical`
+
+    """
 
     NOTSET = "notset"
     DEBUG = "debug"
@@ -36,21 +56,112 @@ class LogLevel(Enum):
     CRITICAL = "critical"
 
 
+class SupportedBackend(Enum):
+    """Enumeration of supported database backends
+
+    - `elastic`: [Elasticsearch](https://www.elastic.co/).
+    - `mongodb`: [MongoDB](https://www.mongodb.com/).
+    - `mongomock`: Also MongoDB, but instead of using the
+        [`pymongo`](https://pymongo.readthedocs.io/) driver to connect to a live Mongo database
+        instance, this will use the [`mongomock`](https://github.com/mongomock/mongomock) driver,
+        creating an in-memory database, which is mainly used for testing.
+
+    """
+
+    ELASTIC = "elastic"
+    MONGODB = "mongodb"
+    MONGOMOCK = "mongomock"
+
+
+def config_file_settings(settings: BaseSettings) -> Dict[str, Any]:
+    """Configuration file settings source.
+
+    Based on the example in the
+    [pydantic documentation](https://pydantic-docs.helpmanual.io/usage/settings/#adding-sources),
+    this function loads ServerConfig settings from a configuration file.
+
+    The file must be of either type JSON or YML/YAML.
+
+    Parameters:
+        settings: The `pydantic.BaseSettings` class using this function as a
+            `pydantic.SettingsSourceCallable`.
+
+    Returns:
+        Dictionary of settings as read from a file.
+
+    """
+    import json
+    import os
+    import yaml
+
+    encoding = settings.__config__.env_file_encoding
+    config_file = Path(os.getenv("OPTIMADE_CONFIG_FILE", DEFAULT_CONFIG_FILE_PATH))
+
+    res = {}
+    if config_file.is_file():
+        config_file_content = config_file.read_text(encoding=encoding)
+
+        try:
+            res = json.loads(config_file_content)
+        except json.JSONDecodeError as json_exc:
+            try:
+                # This can essentially also load JSON files, as JSON is a subset of YAML v1,
+                # but I suspect it is not as rigorous
+                res = yaml.safe_load(config_file_content)
+            except yaml.YAMLError as yaml_exc:
+                warnings.warn(
+                    f"Unable to parse config file {config_file} as JSON or YAML, using the "
+                    "default settings instead..\n"
+                    f"Errors:\n  JSON:\n{json_exc}.\n\n  YAML:\n{yaml_exc}"
+                )
+    else:
+        warnings.warn(
+            f"Unable to find config file at {config_file}, using the default settings instead."
+        )
+
+    if res is None:
+        # This can happen if the yaml loading doesn't succeed properly, e.g., if the file is empty.
+        warnings.warn(
+            "Unable to load any settings from {config_file}, using the default settings instead."
+        )
+        res = {}
+
+    return res
+
+
 class ServerConfig(BaseSettings):
     """This class stores server config parameters in a way that
     can be easily extended for new config file types.
 
     """
 
-    config_file: Optional[str] = Field(
-        None, description="File to load alternative defaults from"
-    )
     debug: bool = Field(
-        False, description="Turns on Debug Mode for the OPTIMADE Server implementation"
+        False,
+        description="Turns on Debug Mode for the OPTIMADE Server implementation",
     )
-    use_real_mongo: bool = Field(
-        False, description="Use a real Mongo server rather than MongoMock"
+
+    insert_test_data: bool = Field(
+        True,
+        description=(
+            "Insert test data into each collection on server initialisation. If true, the "
+            "configured backend will be populated with test data on server start. Should be "
+            "disabled for production usage."
+        ),
     )
+
+    use_real_mongo: Optional[bool] = Field(
+        None, description="DEPRECATED: force usage of MongoDB over any other backend."
+    )
+
+    database_backend: SupportedBackend = Field(
+        SupportedBackend.MONGOMOCK,
+        description="Which database backend to use out of the supported backends.",
+    )
+
+    elastic_hosts: Optional[List[Dict]] = Field(
+        None, description="Host settings to pass through to the `Elasticsearch` class."
+    )
+
     mongo_database: str = Field(
         "optimade", description="Mongo database for collection data"
     )
@@ -72,14 +183,18 @@ class ServerConfig(BaseSettings):
     )
     default_db: str = Field(
         "test_server",
-        description="ID of /links endpoint resource for the chosen default OPTIMADE implementation (only relevant for the index meta-database)",
+        description=(
+            "ID of /links endpoint resource for the chosen default OPTIMADE implementation (only "
+            "relevant for the index meta-database)"
+        ),
     )
     root_path: Optional[str] = Field(
         None,
         description=(
-            "Sets the FastAPI app `root_path` parameter. This can be used to serve the API under a "
-            "path prefix behind a proxy or as a sub-application of another FastAPI app. "
-            "See https://fastapi.tiangolo.com/advanced/sub-applications/#technical-details-root_path for details."
+            "Sets the FastAPI app `root_path` parameter. This can be used to serve the API under a"
+            " path prefix behind a proxy or as a sub-application of another FastAPI app. See "
+            "https://fastapi.tiangolo.com/advanced/sub-applications/#technical-details-root_path "
+            "for details."
         ),
     )
     base_url: Optional[str] = Field(
@@ -111,25 +226,37 @@ class ServerConfig(BaseSettings):
         Literal["links", "references", "structures"], List[str]
     ] = Field(
         {},
-        description="A list of additional fields to be served with the provider's prefix attached, broken down by endpoint.",
+        description=(
+            "A list of additional fields to be served with the provider's prefix attached, "
+            "broken down by endpoint."
+        ),
     )
     aliases: Dict[Literal["links", "references", "structures"], Dict[str, str]] = Field(
         {},
-        description="A mapping between field names in the database with their corresponding OPTIMADE field names, broken down by endpoint.",
+        description=(
+            "A mapping between field names in the database with their corresponding OPTIMADE field"
+            " names, broken down by endpoint."
+        ),
     )
     length_aliases: Dict[
         Literal["links", "references", "structures"], Dict[str, str]
     ] = Field(
         {},
         description=(
-            "A mapping between a list property (or otherwise) and an integer property that defines the length of that list, "
-            "for example elements -> nelements. The standard aliases are applied first, so this dictionary must refer to the "
-            "API fields, not the database fields."
+            "A mapping between a list property (or otherwise) and an integer property that defines"
+            " the length of that list, for example elements -> nelements. The standard aliases are"
+            " applied first, so this dictionary must refer to the API fields, not the database "
+            "fields."
         ),
     )
     index_links_path: Path = Field(
         Path(__file__).parent.joinpath("index_links.json"),
-        description="Absolute path to a JSON file containing the MongoDB collection of /links resources for the index meta-database",
+        description=(
+            "Absolute path to a JSON file containing the MongoDB collecton of links entries "
+            "(documents) to serve under the /links endpoint of the index meta-database. "
+            "NB! As suggested in the previous sentence, these will only be served when using a "
+            "MongoDB-based backend."
+        ),
     )
     log_level: LogLevel = Field(
         LogLevel.INFO, description="Logging level for the OPTIMADE server."
@@ -147,42 +274,23 @@ class ServerConfig(BaseSettings):
         return res
 
     @root_validator(pre=True)
-    def load_settings(cls, values):
+    def use_real_mongo_override(cls, values):
+        """Overrides the `database_backend` setting with MongoDB and
+        raises a deprecation warning.
+
         """
-        Loads settings from a JSON config file, if available, and uses them in place
-        of the built-in defaults.
-        """
-        config_file_path = Path(values.get("config_file", DEFAULT_CONFIG_FILE_PATH))
+        use_real_mongo = values.pop("use_real_mongo", None)
+        if use_real_mongo is not None:
+            warnings.warn(
+                "'use_real_mongo' is deprecated, please set the appropriate 'database_backend' "
+                "instead.",
+                DeprecationWarning,
+            )
 
-        new_values = {}
+            if use_real_mongo:
+                values["database_backend"] = SupportedBackend.MONGODB
 
-        if config_file_path.is_file():
-            try:
-                with open(config_file_path) as f:
-                    new_values = json.load(f)
-            except json.JSONDecodeError as exc:
-                warnings.warn(
-                    f"Unable to parse config file {config_file_path} as JSON. Error: {exc}."
-                )
-
-        else:
-            if DEFAULT_CONFIG_FILE_PATH != str(config_file_path):
-                warnings.warn(
-                    f"Unable to find config file in requested location {config_file_path}, "
-                    "using the built-in default settings instead."
-                )
-            else:
-                warnings.warn(
-                    f"Unable to find config file in default location {DEFAULT_CONFIG_FILE_PATH}, "
-                    "using the built-in default settings instead."
-                )
-
-        if not new_values:
-            values["config_file"] = None
-
-        new_values.update(values)
-
-        return new_values
+        return values
 
     class Config:
         """
@@ -194,6 +302,39 @@ class ServerConfig(BaseSettings):
         """
 
         env_prefix = "optimade_"
+        extra = "allow"
+        env_file_encoding = "utf-8"
+
+        @classmethod
+        def customise_sources(
+            cls,
+            init_settings: SettingsSourceCallable,
+            env_settings: SettingsSourceCallable,
+            file_secret_settings: SettingsSourceCallable,
+        ) -> Tuple[SettingsSourceCallable, ...]:
+            """
+            **Priority of config settings sources**:
+
+            1. Passed arguments upon initialization of
+               [`ServerConfig`][optimade.server.config.ServerConfig].
+            2. Environment variables, matching the syntax: `"OPTIMADE_"` or `"optimade_"` +
+               `<config_name>`, e.g., `OPTIMADE_LOG_LEVEL=debug` or
+               `optimade_log_dir=~/logs_dir/optimade/`.
+            3. Configuration file (JSON/YAML) taken from:
+               1. Environment variable `OPTIMADE_CONFIG_FILE`.
+               2. Default location (see
+                  [DEFAULT_CONFIG_FILE_PATH][optimade.server.config.DEFAULT_CONFIG_FILE_PATH]).
+            4. Settings from secret file (see
+               [pydantic documentation](https://pydantic-docs.helpmanual.io/usage/settings/#secret-support)
+               for more information).
+
+            """
+            return (
+                init_settings,
+                env_settings,
+                config_file_settings,
+                file_secret_settings,
+            )
 
 
 CONFIG = ServerConfig()

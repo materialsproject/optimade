@@ -1,7 +1,8 @@
 import copy
+import warnings
 from lark import v_args, Token
 from optimade.filtertransformers.base_transformer import BaseTransformer
-from optimade.server.exceptions import BadRequest
+from optimade.server.warnings import TimestampNotRFCCompliant
 
 __all__ = ("MongoTransformer",)
 
@@ -32,7 +33,7 @@ class MongoTransformer(BaseTransformer):
     }
 
     def postprocess(self, query):
-        """ Used to post-process the final parsed query. """
+        """Used to post-process the final parsed query."""
         if self.mapper:
             # important to apply length alias before normal aliases
             query = self._apply_length_aliases(query)
@@ -42,6 +43,7 @@ class MongoTransformer(BaseTransformer):
         query = self._apply_length_operators(query)
         query = self._apply_unknown_or_null_filter(query)
         query = self._apply_mongo_id_filter(query)
+        query = self._apply_mongo_date_filter(query)
 
         return query
 
@@ -59,11 +61,11 @@ class MongoTransformer(BaseTransformer):
 
     def value_zip(self, arg):
         # value_zip: [ OPERATOR ] value ":" [ OPERATOR ] value (":" [ OPERATOR ] value)*
-        raise NotImplementedError
+        raise NotImplementedError("Correlated list queries are not supported.")
 
     def value_zip_list(self, arg):
         # value_zip_list: value_zip ( "," value_zip )*
-        raise NotImplementedError
+        raise NotImplementedError("Correlated list queries are not supported.")
 
     def expression(self, arg):
         # expression: expression_clause ( OR expression_clause )
@@ -82,6 +84,12 @@ class MongoTransformer(BaseTransformer):
     def property_first_comparison(self, arg):
         # property_first_comparison: property ( value_op_rhs | known_op_rhs | fuzzy_string_op_rhs | set_op_rhs |
         # set_zip_op_rhs | length_op_rhs )
+
+        # Awkwardly, MongoDB will match null fields in $ne filters,
+        # so we need to add a check for null equality in evey $ne query.
+        if "$ne" in arg[1]:
+            return {"$and": [{arg[0]: arg[1]}, {arg[0]: {"$ne": None}}]}
+
         return {arg[0]: arg[1]}
 
     def constant_first_comparison(self, arg):
@@ -156,11 +164,11 @@ class MongoTransformer(BaseTransformer):
     def set_zip_op_rhs(self, arg):
         # set_zip_op_rhs: property_zip_addon HAS ( value_zip | ONLY value_zip_list | ALL value_zip_list |
         # ANY value_zip_list )
-        raise NotImplementedError
+        raise NotImplementedError("Correlated list queries are not supported.")
 
     def property_zip_addon(self, arg):
         # property_zip_addon: ":" property (":" property)*
-        raise NotImplementedError
+        raise NotImplementedError("Correlated list queries are not supported.")
 
     def _recursive_expression_phrase(self, arg):
         """Helper function for parsing `expression_phrase`. Recursively sorts out
@@ -224,15 +232,15 @@ class MongoTransformer(BaseTransformer):
             return filter_
 
         def check_for_alias(prop, expr):
-            return self.mapper.alias_for(prop) != prop
+            return self.mapper.get_backend_field(prop) != prop
 
         def apply_alias(subdict, prop, expr):
             if isinstance(subdict, dict):
-                subdict[self.mapper.alias_for(prop)] = self._apply_aliases(
+                subdict[self.mapper.get_backend_field(prop)] = self._apply_aliases(
                     subdict.pop(prop)
                 )
             elif isinstance(subdict, str):
-                subdict = self.mapper.alias_for(subdict)
+                subdict = self.mapper.get_backend_field(subdict)
 
             return subdict
 
@@ -384,7 +392,7 @@ class MongoTransformer(BaseTransformer):
         """
 
         def check_for_id_key(prop, _):
-            """ Find cases where the query dict is operating on the `_id` field. """
+            """Find cases where the query dict is operating on the `_id` field."""
             return prop == "_id"
 
         def replace_str_id_with_objectid(subdict, prop, expr):
@@ -394,9 +402,9 @@ class MongoTransformer(BaseTransformer):
                 val = subdict[prop][operator]
                 if operator not in ("$eq", "$ne"):
                     if self.mapper is not None:
-                        prop = self.mapper.alias_of(prop)
-                    raise BadRequest(
-                        detail=f"Operator not supported for query on field {prop!r}, can only test for equality"
+                        prop = self.mapper.get_optimade_field(prop)
+                    raise NotImplementedError(
+                        f"Operator {operator} not supported for query on field {prop!r}, can only test for equality"
                     )
                 if isinstance(val, str):
                     subdict[prop][operator] = ObjectId(val)
@@ -404,6 +412,44 @@ class MongoTransformer(BaseTransformer):
 
         return recursive_postprocessing(
             filter_, check_for_id_key, replace_str_id_with_objectid
+        )
+
+    def _apply_mongo_date_filter(self, filter_: dict) -> dict:
+        """This method loops through the query and replaces any operations
+        on suspected timestamp properties with the corresponding operation
+        on a BSON `DateTime` type.
+        """
+
+        def check_for_timestamp_field(prop, _):
+            """Find cases where the query dict is operating on a timestamp field."""
+            if self.mapper is not None:
+                prop = self.mapper.get_optimade_field(prop)
+            return prop == "last_modified"
+
+        def replace_str_date_with_datetime(subdict, prop, expr):
+            """Encode suspected dates in with BSON."""
+            import bson.json_util
+
+            for operator in subdict[prop]:
+                query_datetime = bson.json_util.loads(
+                    bson.json_util.dumps({"$date": subdict[prop][operator]}),
+                    json_options=bson.json_util.DEFAULT_JSON_OPTIONS.with_options(
+                        tz_aware=True, tzinfo=bson.tz_util.utc
+                    ),
+                )
+                if query_datetime.microsecond != 0:
+                    warnings.warn(
+                        f"Query for timestamp {subdict[prop][operator]!r} for field {prop!r} contained microseconds, which is not RFC3339 compliant. "
+                        "This may cause undefined behaviour for the underlying database.",
+                        TimestampNotRFCCompliant,
+                    )
+
+                subdict[prop][operator] = query_datetime
+
+            return subdict
+
+        return recursive_postprocessing(
+            filter_, check_for_timestamp_field, replace_str_date_with_datetime
         )
 
 

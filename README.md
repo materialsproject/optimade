@@ -11,10 +11,8 @@ The aim of OPTIMADE is to develop a common API, compliant with the [JSON API 1.0
 This is to enable interoperability among databases that contain calculated properties of existing and hypothetical materials.
 
 This repository contains a library of tools for implementing and consuming [OPTIMADE](https://www.optimade.org) APIs using Python.
-It also contains a server validator tool, which may be called from the shell or used as a GitHub Action from [optimade-validator-action](https://github.com/Materials-Consortia/optimade-validator-action).
-
-_Disclaimer_: While the package supports `elasticsearch-dsl` v6 & v7 and `django` v2 & v3, all tests are performed with the latest supported version.
-If you experience any issues with the older versions, you are most welcome to contribute to the repository (see below under [Contributing](#contributing)).
+Server implementations can make use of the supported MongoDB (v4) and Elasticsearch (v6) database backends, or plug in a custom backend implementation.
+The package also contains a server validator tool, which may be called from the shell (`optimade-validator`) or used as a GitHub Action from [optimade-validator-action](https://github.com/Materials-Consortia/optimade-validator-action).
 
 ## Status
 
@@ -32,6 +30,19 @@ Detailed instructions for installing and running the index meta-database and the
 
 The latest stable version of this package can be obtained from [PyPI](https://pypi.org/project/optimade) `pip install optimade`.
 The latest development version of this package can be installed from the master branch of this repository `git clone https://github.com/Materials-Consortia/optimade-python-tools`.
+
+## Supported OPTIMADE versions
+
+Each release of the `optimade` package from this repository only targets one version of the OPTIMADE specification, summarised in the table below.
+
+| OPTIMADE API version | `optimade` version |
+|:--------------------:|:------------------:|
+| [v1.0.0](https://github.com/Materials-Consortia/OPTIMADE/blob/v1.0.0/optimade.rst) | [v0.12.9](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.12.9) |
+| [v1.0.1](https://github.com/Materials-Consortia/OPTIMADE/blob/v1.0.1/optimade.rst) [<sup>†</sup>](#version_footnote) | [v0.13.1](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.13.1) |
+
+<span id="#version_footnote"><sup>†</sup></span>
+Whilst both the specification and this package follow semantic versioning, a [potentially backwards incompatible change](https://github.com/Materials-Consortia/OPTIMADE/pull/344) was introduced in v1.0.1 of the specification.
+
 
 ## Contributing
 

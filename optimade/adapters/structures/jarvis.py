@@ -10,7 +10,6 @@ This conversion function relies on the [jarvis-tools](https://github.com/usnistg
 !!! success "Contributing author"
     This conversion function was contributed by Kamal Choudhary ([@knc6](https://github.com/knc6)).
 """
-from warnings import warn
 from optimade.models import StructureResource as OptimadeStructure
 from optimade.models import StructureFeatures
 from optimade.adapters.exceptions import ConversionError
@@ -18,6 +17,9 @@ from optimade.adapters.exceptions import ConversionError
 try:
     from jarvis.core.atoms import Atoms
 except (ImportError, ModuleNotFoundError):
+    from warnings import warn
+    from optimade.adapters.warnings import AdapterPackageNotFound
+
     Atoms = type("Atoms", (), {})
     JARVIS_NOT_FOUND = "jarvis-tools package not found, cannot convert structure to a JARVIS Atoms. Visit https://github.com/usnistgov/jarvis"
 
@@ -39,7 +41,7 @@ def get_jarvis_atoms(optimade_structure: OptimadeStructure) -> Atoms:
 
     """
     if "optimade.adapters" in repr(globals().get("Atoms")):
-        warn(JARVIS_NOT_FOUND)
+        warn(JARVIS_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     attributes = optimade_structure.attributes

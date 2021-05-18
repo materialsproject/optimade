@@ -1,0 +1,160 @@
+{
+  "references": {
+    "mappings": {
+      "doc": {
+        "properties": {
+          "address": {
+            "type": "keyword"
+          },
+          "annote": {
+            "type": "keyword"
+          },
+          "authors": {
+            "properties": {
+              "name": {
+                "type": "keyword"
+              },
+              "firstname": {
+                "type": "keyword"
+              },
+              "lastname": {
+                "type": "keyword"
+              }
+            }
+          },
+          "bib_type": {
+            "type": "keyword"
+          },
+          "booktitle": {
+            "type": "keyword"
+          },
+          "chapter": {
+            "type": "keyword"
+          },
+          "crossref": {
+            "type": "keyword"
+          },
+          "doi": {
+            "type": "keyword"
+          },
+          "edition": {
+            "type": "keyword"
+          },
+          "editors": {
+            "type": "keyword"
+          },
+          "howpublished": {
+            "type": "keyword"
+          },
+          "id": {
+            "type": "keyword"
+          },
+          "immutable_id": {
+            "type": "keyword"
+          },
+          "institution": {
+            "type": "keyword"
+          },
+          "journal": {
+            "type": "keyword"
+          },
+          "key": {
+            "type": "keyword"
+          },
+          "last_modified": {
+            "type": "date"
+          },
+          "links": {
+            "type": "keyword"
+          },
+          "month": {
+            "type": "keyword"
+          },
+          "note": {
+            "type": "keyword"
+          },
+          "number": {
+            "type": "keyword"
+          },
+          "organization": {
+            "type": "keyword"
+          },
+          "pages": {
+            "type": "keyword"
+          },
+          "publisher": {
+            "type": "keyword"
+          },
+          "relationships": {
+            "type": "keyword"
+          },
+          "school": {
+            "type": "keyword"
+          },
+          "series": {
+            "type": "keyword"
+          },
+          "title": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "url": {
+            "type": "keyword"
+          },
+          "volume": {
+            "type": "keyword"
+          },
+          "year": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  },
+  "structures": {
+    "mappings": {
+      "doc": {
+        "properties": {
+          "chemical_formula_anonymous": {
+            "type": "keyword"
+          },
+          "chemical_formula_descriptive": {
+            "type": "keyword"
+          },
+          "chemical_formula_hill": {
+            "type": "keyword"
+          },
+          "chemical_formula_reduced": {
+            "type": "keyword"
+          },
+          "dimension_types": {
+            "type": "integer"
+          },
+          "elements": {
+            "type": "keyword"
+          },
+          "elements_ratios": {
+            "type": "long"
+          },
+          "id": {
+            "type": "keyword"
+          },
+          "nelements": {
+            "type": "integer"
+          },
+          "nsites": {
+            "type": "integer"
+          },
+          "species_at_sites": {
+            "type": "keyword"
+          },
+          "structure_features": {
+            "type": "keyword"
+          }
+        }
+      }
+    }
+  }
+}

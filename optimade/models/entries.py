@@ -41,7 +41,7 @@ class StructureRelationship(TypedRelationship):
 
 
 class EntryRelationships(Relationships):
-    """This model wraps the JSON API Relationships to include type-specific top level keys. """
+    """This model wraps the JSON API Relationships to include type-specific top level keys."""
 
     references: Optional[ReferenceRelationship] = StrictField(
         None,
@@ -167,6 +167,7 @@ If the entry listing endpoint supports sorting, this key MUST be present for sor
 
     type: Optional[DataType] = StrictField(
         None,
+        title="Type",
         description="""The type of the property's value.
 This MUST be any of the types defined in the Data types section.
 For the purpose of compatibility with future versions of this specification, a client MUST accept values that are not `string` values specifying any of the OPTIMADE Data types, but MUST then also disregard the `type` field.

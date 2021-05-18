@@ -59,12 +59,14 @@ class LinksResourceAttributes(Attributes):
 
     link_type: LinkType = StrictField(
         ...,
+        title="Link Type",
         description="""The type of the linked relation.
 MUST be one of these values: 'child', 'root', 'external', 'providers'.""",
     )
 
     aggregate: Optional[Aggregate] = StrictField(
-        "ok",
+        Aggregate.OK,
+        title="Aggregate",
         description="""A string indicating whether a client that is following links to aggregate results from different OPTIMADE implementations should follow this link or not.
 This flag SHOULD NOT be indicated for links where `link_type` is not `child`.
 

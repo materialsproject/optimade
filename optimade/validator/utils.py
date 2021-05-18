@@ -38,7 +38,7 @@ from optimade.models import (
 
 
 class ResponseError(Exception):
-    """ This exception should be raised for a manual hardcoded test failure. """
+    """This exception should be raised for a manual hardcoded test failure."""
 
 
 class InternalError(Exception):
@@ -49,28 +49,28 @@ class InternalError(Exception):
 
 
 def print_warning(string, **kwargs):
-    """ Print but angry. """
+    """Print but angry."""
     print(f"\033[93m{string}\033[0m", **kwargs)
 
 
 def print_notify(string, **kwargs):
-    """ Print but louder. """
+    """Print but louder."""
     print(f"\033[94m\033[1m{string}\033[0m", **kwargs)
 
 
 def print_failure(string, **kwargs):
-    """ Print but sad. """
+    """Print but sad."""
     print(f"\033[91m\033[1m{string}\033[0m", **kwargs)
 
 
 def print_success(string, **kwargs):
-    """ Print but happy. """
+    """Print but happy."""
     print(f"\033[92m\033[1m{string}\033[0m", **kwargs)
 
 
 @dataclasses.dataclass
 class ValidatorResults:
-    """ A dataclass to store and print the validation results. """
+    """A dataclass to store and print the validation results."""
 
     success_count: int = 0
     failure_count: int = 0
@@ -275,9 +275,6 @@ def test_case(test_fn: Callable[[Any], Tuple[Any, str]]):
                 and it will not increment the success counter. Errors will be
                 handled in the normal way. This can be used to avoid flooding
                 the output for mutli-stage tests.
-                request: The request that has been performed
-                optional: Whether to count this test as optional
-                multistage
             **kwargs: Extra named arguments passed to the test function.
 
         """
@@ -362,7 +359,8 @@ def test_case(test_fn: Callable[[Any], Tuple[Any, str]]):
 
             # Reset the client request so that it can be properly
             # displayed if the next request fails
-            validator.client.last_request = None
+            if not multistage:
+                validator.client.last_request = None
 
             return result, msg
 

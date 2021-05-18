@@ -1,7 +1,7 @@
 {
     "config_file": "~/.optimade.json",
     "debug": false,
-    "use_real_mongo": false,
+    "insert_test_data": true,
     "mongo_database": "optimade",
     "mongo_uri": "localhost:27017",
     "links_collection": "links",
@@ -13,7 +13,7 @@
     "base_url": null,
     "implementation": {
         "name": "OPTIMADE Python Tools",
-        "version": "0.12.6",
+        "version": "0.14.1",
         "source_url": "https://github.com/Materials-Consortia/optimade-python-tools",
         "maintainer": {"email": "dev@optimade.org"}
     },

@@ -1,17 +1,59 @@
 from abc import abstractmethod, ABC
-from typing import Tuple, List, Union
+from typing import Tuple, List, Union, Dict, Any
 import warnings
 import re
 
 from lark import Transformer
+from fastapi import HTTPException
 
 from optimade.filterparser import LarkParser
 from optimade.models import EntryResource
-from optimade.server.config import CONFIG
+from optimade.server.config import CONFIG, SupportedBackend
 from optimade.server.exceptions import BadRequest, Forbidden
 from optimade.server.mappers import BaseResourceMapper
 from optimade.server.query_params import EntryListingQueryParams, SingleEntryQueryParams
 from optimade.server.warnings import FieldValueNotRecognized
+
+
+def create_collection(
+    name: str, resource_cls: EntryResource, resource_mapper: BaseResourceMapper
+) -> "EntryCollection":
+    """Create an `EntryCollection` of the configured type, depending on the value of
+    `CONFIG.database_backend`.
+
+    Arguments:
+        name: The collection name.
+        resource_cls: The type of entry resource to be stored within the collection.
+        resource_mapper: The associated resource mapper for that entry resource type.
+
+    Returns:
+        The created `EntryCollection`.
+
+    """
+    if CONFIG.database_backend in (
+        SupportedBackend.MONGODB,
+        SupportedBackend.MONGOMOCK,
+    ):
+        from optimade.server.entry_collections.mongo import MongoCollection
+
+        return MongoCollection(
+            name=name,
+            resource_cls=resource_cls,
+            resource_mapper=resource_mapper,
+        )
+
+    if CONFIG.database_backend is SupportedBackend.ELASTIC:
+        from optimade.server.entry_collections.elasticsearch import ElasticCollection
+
+        return ElasticCollection(
+            name=name,
+            resource_cls=resource_cls,
+            resource_mapper=resource_mapper,
+        )
+
+    raise NotImplementedError(
+        f"The database backend {CONFIG.database_backend!r} is not implemented"
+    )
 
 
 class EntryCollection(ABC):
@@ -20,7 +62,6 @@ class EntryCollection(ABC):
 
     def __init__(
         self,
-        collection,
         resource_cls: EntryResource,
         resource_mapper: BaseResourceMapper,
         transformer: Transformer,
@@ -28,7 +69,6 @@ class EntryCollection(ABC):
         """Initialize the collection for the given parameters.
 
         Parameters:
-            collection: The backend-specific collection.
             resource_cls (EntryResource): The `EntryResource` model
                 that is stored by the collection.
             resource_mapper (BaseResourceMapper): A resource mapper
@@ -38,7 +78,6 @@ class EntryCollection(ABC):
                 interpret the filter.
 
         """
-        self.collection = collection
         self.parser = LarkParser()
         self.resource_cls = resource_cls
         self.resource_mapper = resource_mapper
@@ -49,7 +88,16 @@ class EntryCollection(ABC):
 
     @abstractmethod
     def __len__(self) -> int:
-        """ Returns the total number of entries in the collection. """
+        """Returns the total number of entries in the collection."""
+
+    @abstractmethod
+    def insert(self, data: List[EntryResource]) -> None:
+        """Add the given entries to the underlying database.
+
+        Arguments:
+            data: The entry resource objects to add to the database.
+
+        """
 
     @abstractmethod
     def count(self, **kwargs) -> int:
@@ -61,7 +109,6 @@ class EntryCollection(ABC):
 
         """
 
-    @abstractmethod
     def find(
         self, params: EntryListingQueryParams
     ) -> Tuple[List[EntryResource], int, bool, set]:
@@ -77,6 +124,56 @@ class EntryCollection(ABC):
 
         Returns:
             (`results`, `data_returned`, `more_data_available`, `fields`).
+
+        """
+        criteria = self.handle_query_params(params)
+        single_entry = isinstance(params, SingleEntryQueryParams)
+        response_fields = criteria.pop("fields")
+
+        results, data_returned, more_data_available = self._run_db_query(
+            criteria, single_entry=isinstance(params, SingleEntryQueryParams)
+        )
+
+        if single_entry:
+            results = results[0] if results else None
+
+            if data_returned > 1:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Instead of a single entry, {data_returned} entries were found",
+                )
+
+        exclude_fields = self.all_fields - response_fields
+
+        if results:
+            if isinstance(results, dict):
+                results = self.resource_cls(**self.resource_mapper.map_back(results))
+            else:
+                results = [
+                    self.resource_cls(**self.resource_mapper.map_back(doc))
+                    for doc in results
+                ]
+
+        return (
+            results,
+            data_returned,
+            more_data_available,
+            exclude_fields,
+        )
+
+    @abstractmethod
+    def _run_db_query(
+        self, criteria: Dict[str, Any], single_entry: bool = False
+    ) -> Tuple[List[Dict[str, Any]], int, bool]:
+        """Run the query on the backend and collect the results.
+
+        Arguments:
+            criteria: A dictionary representation of the query parameters.
+            single_entry: Whether or not the caller is expecting a single entry response.
+
+        Returns:
+            The list of entries from the database (without any re-mapping), the total number of
+            entries matching the query and a boolean for whether or not there is more data available.
 
         """
 
@@ -101,13 +198,21 @@ class EntryCollection(ABC):
         return fields
 
     def get_attribute_fields(self) -> set:
-        """Get the set of attribute fields from the schema of the
-        resource class, resolving references along the way.
+        """Get the set of attribute fields
+
+        Return only the _first-level_ attribute fields from the schema of the resource class,
+        resolving references along the way if needed.
+
+        Note:
+            It is not needed to take care of other special OpenAPI schema keys than `allOf`,
+            since only `allOf` will be found in this context.
+            Other special keys can be found in [the Swagger documentation](https://swagger.io/docs/specification/data-models/oneof-anyof-allof-not/).
 
         Returns:
             Property names.
 
         """
+
         schema = self.resource_cls.schema()
         attributes = schema["properties"]["attributes"]
         if "allOf" in attributes:
@@ -124,7 +229,7 @@ class EntryCollection(ABC):
 
     def handle_query_params(
         self, params: Union[EntryListingQueryParams, SingleEntryQueryParams]
-    ) -> dict:
+    ) -> Tuple[Dict[str, Any]]:
         """Parse and interpret the backend-agnostic query parameter models into a dictionary
         that can be used by the specific backend.
 
@@ -141,7 +246,7 @@ class EntryCollection(ABC):
                 or response format.
 
         Returns:
-            A dictionary representation of the query parameters, ready to be used by pymongo.
+            A dictionary representation of the query parameters.
 
         """
         cursor_kwargs = {}
@@ -170,9 +275,9 @@ class EntryCollection(ABC):
         else:
             cursor_kwargs["limit"] = CONFIG.page_limit
 
-        cursor_kwargs["fields"] = self.all_fields
         cursor_kwargs["projection"] = {
-            f"{self.resource_mapper.alias_for(f)}": True for f in self.all_fields
+            f"{self.resource_mapper.get_backend_field(f)}": True
+            for f in self.all_fields
         }
 
         if "_id" not in cursor_kwargs["projection"]:
@@ -183,6 +288,14 @@ class EntryCollection(ABC):
 
         if getattr(params, "page_offset", False):
             cursor_kwargs["skip"] = params.page_offset
+
+        if getattr(params, "response_fields", False):
+            response_fields = set(params.response_fields.split(","))
+            response_fields |= self.resource_mapper.get_required_fields()
+        else:
+            response_fields = self.all_fields.copy()
+
+        cursor_kwargs["fields"] = response_fields
 
         return cursor_kwargs
 
@@ -204,13 +317,13 @@ class EntryCollection(ABC):
             if field.startswith("-"):
                 field = field[1:]
                 sort_dir = -1
-            aliased_field = self.resource_mapper.alias_for(field)
+            aliased_field = self.resource_mapper.get_backend_field(field)
             sort_spec.append((aliased_field, sort_dir))
 
         unknown_fields = [
             field
             for field, _ in sort_spec
-            if self.resource_mapper.alias_of(field) not in self.all_fields
+            if self.resource_mapper.get_optimade_field(field) not in self.all_fields
         ]
 
         if unknown_fields:

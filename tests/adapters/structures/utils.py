@@ -9,6 +9,6 @@ def get_min_ver(dependency: str) -> str:
         for line in setup_file.readlines():
             min_ver = re.findall(fr'"{dependency}((=|!|<|>|~)=|>|<)(.+)"', line)
             if min_ver:
-                return min_ver[0][2]
+                return min_ver[0][2].split(";")[0]
         else:
             raise RuntimeError(f"Cannot find {dependency} dependency in setup.py")

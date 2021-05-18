@@ -102,6 +102,7 @@ def test_getattr_order(structure):
 def test_no_module_conversion(structure):
     """Make sure a warnings is raised and None is returned for conversions with non-existing modules"""
     import importlib
+    from optimade.adapters.warnings import AdapterPackageNotFound
 
     CONVERSION_MAPPING = {
         "aiida": ["aiida_structuredata"],
@@ -124,7 +125,7 @@ def test_no_module_conversion(structure):
     for module in modules_to_test:
         for conversion_function in CONVERSION_MAPPING[module]:
             with pytest.warns(
-                UserWarning, match="not found, cannot convert structure to"
+                AdapterPackageNotFound, match="not found, cannot convert structure to"
             ):
                 converted_structure = structure.convert(conversion_function)
             assert converted_structure is None

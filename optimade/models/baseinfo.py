@@ -36,7 +36,7 @@ Examples: `1.0.0`, `1.0.0-rc.2`.""",
 
     @root_validator(pre=False, skip_on_failure=True)
     def crosscheck_url_and_version(cls, values):
-        """ Check that URL version and API version are compatible. """
+        """Check that URL version and API version are compatible."""
         url_version = (
             values["url"]
             .split("/")[-2 if values["url"].endswith("/") else -1]

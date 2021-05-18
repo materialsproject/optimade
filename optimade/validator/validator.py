@@ -161,7 +161,7 @@ class ImplementationValidator:
         self.results = ValidatorResults(verbosity=self.verbosity)
 
     def _setup_log(self):
-        """ Define stdout log based on given verbosity. """
+        """Define stdout log based on given verbosity."""
         self._log = logging.getLogger("optimade").getChild("validator")
         self._log.handlers = []
         stdout_handler = logging.StreamHandler(sys.stdout)
@@ -184,7 +184,7 @@ class ImplementationValidator:
             self._log.setLevel(logging.DEBUG)
 
     def print_summary(self):
-        """ Print a summary of the results of validation. """
+        """Print a summary of the results of validation."""
         if self.respond_json:
             print(json.dumps(dataclasses.asdict(self.results), indent=2))
             return
@@ -252,6 +252,7 @@ class ImplementationValidator:
             )
             self._test_as_type()
             self.valid = not bool(self.results.failure_count)
+            self.print_summary()
             return
 
         # Test entire implementation
@@ -268,9 +269,9 @@ class ImplementationValidator:
                 f"Unable to deserialize response from introspective {info_endp!r} endpoint. "
                 "This is required for all further validation, so the validator will now exit."
             )
-            self.print_summary()
             # Set valid to False to ensure error code 1 is raised at CLI
             self.valid = False
+            self.print_summary()
             return
 
         # Grab the provider prefix from base info and use it when looking for provider fields
@@ -280,7 +281,9 @@ class ImplementationValidator:
             self.provider_prefix = meta["provider"].get("prefix")
 
         # Set the response class for all `/info/entry` endpoints based on `/info` response
-        self.available_json_endpoints, _ = self._get_available_endpoints(base_info)
+        self.available_json_endpoints, _ = self._get_available_endpoints(
+            base_info, request=info_endp
+        )
         for endp in self.available_json_endpoints:
             self._response_classes[f"{info_endp}/{endp}"] = EntryInfoResponse
 
@@ -401,7 +404,7 @@ class ImplementationValidator:
         """
         properties = entry_info.get("data", {}).get("properties", [])
         self._test_must_properties(
-            properties, endp, request="; checking entry info for required properties"
+            properties, endp, request=f"{CONF.info_endpoint}/{endp}"
         )
 
         return properties
@@ -423,7 +426,7 @@ class ImplementationValidator:
         """
         must_props = set(
             prop
-            for prop in CONF.entry_schemas[endp]
+            for prop in CONF.entry_schemas.get(endp, {})
             if CONF.entry_schemas[endp].get(prop, {}).get("support")
             == SupportLevel.MUST
         )
@@ -451,22 +454,29 @@ class ImplementationValidator:
 
 
         """
-        response, _ = self._get_endpoint(endp)
-        data_returned = response.json()["meta"]["data_returned"]
-        if data_returned < 1:
-            return (
-                None,
-                "Endpoint {endp!r} has no entries, cannot get archetypal entry.",
-            )
+        response, message = self._get_endpoint(endp, multistage=True)
 
-        response, _ = self._get_endpoint(
-            f"{endp}?page_offset={random.randint(0, data_returned-1)}&response_fields={','.join(properties)}"
-        )
-        archetypal_entry = response.json()["data"][0]
-        return (
-            archetypal_entry,
-            f"set archetypal entry for {endp} with ID {archetypal_entry['id']}.",
-        )
+        if response:
+            data = response.json().get("data", [])
+            data_returned = len(data)
+            if data_returned < 1:
+                return (
+                    None,
+                    "Endpoint {endp!r} returned no entries, cannot get archetypal entry.",
+                )
+
+            response, message = self._get_endpoint(
+                f"{endp}?page_offset={random.randint(0, data_returned-1)}&response_fields={','.join(properties)}",
+                multistage=True,
+            )
+            if response:
+                archetypal_entry = response.json()["data"][0]
+                return (
+                    archetypal_entry,
+                    f"set archetypal entry for {endp} with ID {archetypal_entry['id']}.",
+                )
+
+        raise ResponseError(f"Failed to get archetypal entry. Details: {message}")
 
     @test_case
     def _check_response_fields(self, endp: str, fields: List[str]) -> Tuple[bool, str]:
@@ -483,13 +493,19 @@ class ImplementationValidator:
 
         subset_fields = random.sample(fields, min(len(fields) - 1, 3))
         test_query = f"{endp}?response_fields={','.join(subset_fields)}&page_limit=1"
-        response, _ = self._get_endpoint(test_query)
+        response, _ = self._get_endpoint(test_query, multistage=True)
 
         if response and len(response.json()["data"]) == 1:
             doc = response.json()["data"][0]
             expected_fields = set(subset_fields)
             expected_fields -= CONF.top_level_non_attribute_fields
-            returned_fields = set(sorted(list(doc["attributes"].keys())))
+
+            if "attributes" not in doc:
+                raise ResponseError(
+                    f"Entries are missing `attributes` key.\nReceived: {doc}"
+                )
+
+            returned_fields = set(sorted(list(doc.get("attributes", {}).keys())))
             returned_fields -= CONF.top_level_non_attribute_fields
 
             if expected_fields != returned_fields:
@@ -606,7 +622,7 @@ class ImplementationValidator:
                 else:
                     _test_value = test_value[0]
 
-        elif prop_type == DataType.STRING:
+        elif prop_type in (DataType.STRING, DataType.TIMESTAMP):
             _test_value = f'"{test_value}"'
 
         else:
@@ -670,15 +686,32 @@ class ImplementationValidator:
             # Otherwise, None values are not allowed for MUST's, and entire missing fields are not allowed
             raise ResponseError(msg)
 
+        using_fallback = False
         if prop_type == DataType.LIST:
-            if not test_value or (
-                isinstance(test_value[0], dict) or isinstance(test_value[0], list)
-            ):
-                msg = f"Not testing queries on field {prop} of type {prop_type} with nested dictionary/list entries."
+            if not test_value:
+                test_value = CONF.enum_fallback_values.get(endp, {}).get(prop)
+                using_fallback = True
+
+            if not test_value:
+                msg = f"Not testing filters on field {prop} of type {prop_type} as no test value was found to use in filter."
+                self._log.warning(msg)
+                return None, msg
+            if isinstance(test_value[0], dict) or isinstance(test_value[0], list):
+                msg = f"Not testing filters on field {prop} of type {prop_type} with nested dictionary/list test value."
                 self._log.warning(msg)
                 return None, msg
 
-        if prop_type in (DataType.DICTIONARY, DataType.TIMESTAMP):
+            # Try to infer if the test value is a float from its string representation
+            # and decide whether to do inclusive/exclusive query tests
+            try:
+                float(test_value[0])
+                msg = f"Not testing filters on field {prop} of type {prop_type} containing float values."
+                self._log.warning(msg)
+                return None, msg
+            except ValueError:
+                pass
+
+        if prop_type in (DataType.DICTIONARY,):
             msg = f"Not testing queries on field {prop} of type {prop_type}."
             self._log.warning(msg)
             return None, msg
@@ -693,26 +726,37 @@ class ImplementationValidator:
             _test_value = self._format_test_value(test_value, prop_type, operator)
 
             query = f"{prop} {operator} {_test_value}"
-            response, _ = self._get_endpoint(
-                f"{endp}?filter={query}",
+            request = f"{endp}?filter={query}"
+            response, message = self._get_endpoint(
+                request,
                 multistage=True,
                 optional=query_optional,
                 expected_status_code=(200, 501),
             )
-            if not response:
-                return None, ""
 
-            if response.status_code == 501:
-                self._log.warning(
-                    f"Implementation returned {response.content} for {query}"
-                )
-                return (
-                    True,
-                    "Implementation safely reported that filter {query} was not implemented.",
+            if not response:
+                if query_optional:
+                    return (
+                        None,
+                        "Optional query {query!r} returned {reversed_response.status_code}.",
+                    )
+                raise ResponseError(
+                    f"Unable to perform mandatory query {query!r}: responded with status code {response.status_code}"
                 )
 
             response = response.json()
-            num_data_returned[operator] = response["meta"]["data_returned"]
+
+            if "meta" not in response or "more_data_available" not in response["meta"]:
+                raise ResponseError(
+                    f"Required field `meta->more_data_available` missing from response for {request}."
+                )
+
+            if not response["meta"]["more_data_available"]:
+                num_data_returned[operator] = len(response["data"])
+            else:
+                num_data_returned[operator] = response["meta"].get("data_returned")
+
+            num_response = num_data_returned[operator]
 
             # Numeric and string comparisons must work both ways...
             if prop_type in (
@@ -740,49 +784,94 @@ class ImplementationValidator:
                     continue
 
                 reversed_query = f"{_test_value} {reversed_operator} {prop}"
-                reversed_response, _ = self._get_endpoint(
-                    f"{endp}?filter={reversed_query}",
+                reversed_request = f"{endp}?filter={reversed_query}"
+                reversed_response, message = self._get_endpoint(
+                    reversed_request,
                     multistage=True,
                     optional=query_optional,
+                    expected_status_code=(200, 501),
                 )
+
                 if not reversed_response:
-                    return None, ""
+                    if query_optional:
+                        return (
+                            None,
+                            "Optional query {query!r} returned {reversed_response.status_code}.",
+                        )
+                    raise ResponseError(
+                        f"Unable to perform mandatory query {query!r}: responded with status code {reversed_response.status_code}"
+                    )
 
                 reversed_response = reversed_response.json()
-
                 if (
-                    reversed_response["meta"]["data_returned"]
-                    != response["meta"]["data_returned"]
+                    "meta" not in reversed_response
+                    or "more_data_available" not in reversed_response["meta"]
                 ):
                     raise ResponseError(
-                        f"Query {query} did not work both ways around: {reversed_query}, "
-                        "returning different results each time."
+                        f"Required field `meta->more_data_available` missing from response for {request}."
+                    )
+
+                if not reversed_response["meta"]["more_data_available"]:
+                    num_reversed_response = len(reversed_response["data"])
+                else:
+                    num_reversed_response = reversed_response["meta"].get(
+                        "data_returned"
+                    )
+
+                if num_response is not None and num_reversed_response is not None:
+                    if reversed_response["meta"].get("data_returned") != response[
+                        "meta"
+                    ].get("data_returned"):
+                        raise ResponseError(
+                            f"Query {query} did not work both ways around: {reversed_query}, "
+                            "returning different results each time."
+                        )
+
+                # check that the filter returned no entries that had a null or missing value for the filtered property
+                if any(
+                    entry["attributes"].get(prop, entry.get(prop, None)) is None
+                    for entry in reversed_response.get("data", [])
+                ):
+                    raise ResponseError(
+                        f"Filter {reversed_query!r} on field {prop!r} returned entries that had null or missing values for the field."
                     )
 
             excluded = operator in exclusive_operators
             # if we have all results on this page, check that the blessed ID is in the response
-            if response["meta"]["data_returned"] <= len(response["data"]):
+            if not response["meta"]["more_data_available"]:
                 if excluded and (
                     chosen_entry["id"] in set(entry["id"] for entry in response["data"])
                 ):
                     raise ResponseError(
-                        f"Objects {excluded} were not necessarily excluded by {query}"
+                        f"Object {chosen_entry['id']} with value {test_value} was not excluded by {query}"
                     )
 
-            # check that at least the archetypal structure was returned
-            if not excluded:
-                if num_data_returned[operator] < 1:
+            # check that at least the archetypal structure was returned, unless we are using a fallback value
+            if not excluded and not using_fallback:
+                if (
+                    num_data_returned[operator] is not None
+                    and num_data_returned[operator] < 1
+                ):
                     raise ResponseError(
                         f"Supposedly inclusive query '{query}' did not include original object ID {chosen_entry['id']} "
                         f"(with field '{prop} = {test_value}') potentially indicating a problem with filtering on this field."
                     )
 
+            # check that the filter returned no entries that had a null or missing value for the filtered property
+            if any(
+                entry["attributes"].get(prop, entry.get(prop, None)) is None
+                for entry in response.get("data", [])
+            ):
+                raise ResponseError(
+                    f"Filter {query!r} on field {prop!r} returned entries that had null or missing values for the field."
+                )
+
         if prop in CONF.unique_properties:
-            if num_data_returned["="] == 0:
+            if num_data_returned["="] is not None and num_data_returned["="] == 0:
                 raise ResponseError(
                     f"Unable to filter field 'id' for equality, no data was returned for {query}."
                 )
-            if num_data_returned["="] > 1:
+            if num_data_returned["="] is not None and num_data_returned["="] > 1:
                 raise ResponseError(
                     f"Filter for an individual 'id' returned {num_data_returned['=']} results, when only 1 was expected."
                 )
@@ -831,6 +920,7 @@ class ImplementationValidator:
             )
             response_cls = ValidatorEntryResponseOne
 
+        response_fields = set()
         if endp in CONF.entry_schemas:
             response_fields = (
                 set(CONF.entry_schemas[endp].keys())
@@ -867,6 +957,7 @@ class ImplementationValidator:
             )
             response_cls = ValidatorEntryResponseMany
 
+        response_fields = set()
         if endp in CONF.entry_schemas:
             response_fields = (
                 set(CONF.entry_schemas[endp].keys())
@@ -883,12 +974,14 @@ class ImplementationValidator:
         self._test_page_limit(response)
 
         deserialized, _ = self._deserialize_response(
-            response, response_cls, request=request_str, optional=True
+            response, response_cls, request=request_str
         )
 
         self._get_single_id_from_multi_entry_endpoint(deserialized, request=request_str)
         if deserialized:
-            self._test_data_available_matches_data_returned(deserialized)
+            self._test_data_available_matches_data_returned(
+                deserialized, request=request_str
+            )
 
     @test_case
     def _test_data_available_matches_data_returned(
@@ -906,6 +999,15 @@ class ImplementationValidator:
             `True` if successful, with a string summary.
 
         """
+        if (
+            deserialized.meta.data_available is None
+            or deserialized.meta.data_returned is None
+        ):
+            return (
+                None,
+                "`meta->data_available` and/or `meta->data_returned` were not provided.",
+            )
+
         if deserialized.meta.data_available != deserialized.meta.data_returned:
             raise ResponseError(
                 "No query was performed, but `data_returned` != `data_available`."
@@ -926,41 +1028,49 @@ class ImplementationValidator:
         # First, check that there is a versions endpoint in the appropriate place:
         # If passed a versioned URL, then strip that version from
         # the URL before looking for `/versions`.
+        _old_base_url = self.base_url
         if re.match(VERSIONS_REGEXP, self.base_url_parsed.path) is not None:
             self.client.base_url = "/".join(self.client.base_url.split("/")[:-1])
+            self.base_url = self.client.base_url
 
         response, _ = self._get_endpoint(
             CONF.versions_endpoint, expected_status_code=200
         )
 
-        self._test_versions_endpoint_content(response, request=CONF.versions_endpoint)
+        if response:
+            self._test_versions_endpoint_content(
+                response, request=CONF.versions_endpoint
+            )
 
         # If passed a versioned URL, first reset the URL of the client to the
-        # versioned one, then that this versioned URL does NOT host a versions endpoint
+        # versioned one, then test that this versioned URL does NOT host a versions endpoint
         if re.match(VERSIONS_REGEXP, self.base_url_parsed.path) is not None:
-            self.client.base_url = self.base_url
+            self.client.base_url = _old_base_url
+            self.base_url = _old_base_url
             self._get_endpoint(CONF.versions_endpoint, expected_status_code=404)
 
     @test_case
     def _test_versions_endpoint_content(
         self, response: requests.Response
-    ) -> Tuple[Optional[requests.Response], str]:
+    ) -> Tuple[requests.Response, str]:
         """Checks that the response from the versions endpoint complies
-        with the specification.
+        with the specification and that its 'Content-Type' header complies with
+        [RFC 4180](https://tools.ietf.org/html/rfc4180.html).
 
         Parameters:
             response: The HTTP response from the versions endpoint.
+
+        Raises:
+            ResponseError: If any content checks fail.
 
         Returns:
             The successful HTTP response or `None`, and a summary string.
 
         """
         text_content = response.text.strip().split("\n")
-        headers = response.headers
-
         if text_content[0] != "version":
             raise ResponseError(
-                f"First line of `/{CONF.versions_endpoint}` response must be 'version', not {text_content[0]}"
+                f"First line of `/{CONF.versions_endpoint}` response must be 'version', not {text_content[0]!r}"
             )
 
         if len(text_content) <= 1:
@@ -976,23 +1086,65 @@ class ImplementationValidator:
                     f"Version numbers reported by `/{CONF.versions_endpoint}` must be integers specifying the major version, not {text_content}."
                 )
 
-        content_type = headers.get("content-type")
-        if content_type is not None:
-            content_type = [_.replace(" ", "") for _ in content_type.split(";")]
-        if not content_type or content_type[0].strip() != "text/csv":
+        content_type = response.headers.get("content-type")
+        if not content_type:
             raise ResponseError(
-                f"Incorrect content-type header {content_type} instead of 'text/csv'"
+                "Missing 'Content-Type' in response header from `/versions`."
             )
 
-        for type_parameter in content_type:
-            if type_parameter == "header=present":
-                break
-        else:
-            raise ResponseError(
-                f"Missing 'header=present' parameter in content-type {content_type}"
-            )
+        content_type = [_.replace(" ", "") for _ in content_type.split(";")]
+
+        self._test_versions_headers(
+            content_type,
+            ("text/csv", "text/plain"),
+            optional=True,
+            request=CONF.versions_endpoint,
+        )
+        self._test_versions_headers(
+            content_type,
+            "header=present",
+            optional=True,
+            request=CONF.versions_endpoint,
+        )
 
         return response, "`/versions` endpoint responded correctly."
+
+    @test_case
+    def _test_versions_headers(
+        self,
+        content_type: Dict[str, Any],
+        expected_parameter: Union[str, List[str]],
+    ) -> Tuple[Dict[str, Any], str]:
+        """Tests that the `Content-Type` field of the `/versions` header contains
+        the passed parameter.
+
+        Arguments:
+            content_type: The 'Content-Type' field from the response of the `/versions` endpoint.
+            expected_paramter: A substring or list of substrings that are expected in
+                the Content-Type of the response. If multiple strings are passed, they will
+                be treated as possible alternatives to one another.
+
+        Raises:
+            ResponseError: If the expected 'Content-Type' parameter is missing.
+
+        Returns:
+            The HTTP response headers and a summary string.
+
+        """
+
+        if isinstance(expected_parameter, str):
+            expected_parameter = [expected_parameter]
+
+        if not any(param in content_type for param in expected_parameter):
+            raise ResponseError(
+                f"Incorrect 'Content-Type' header {';'.join(content_type)!r}.\n"
+                f"Missing at least one expected parameter(s): {expected_parameter!r}"
+            )
+
+        return (
+            content_type,
+            f"`/versions` response had one of the expected Content-Type parameters {expected_parameter}.",
+        )
 
     def _test_as_type(self) -> None:
         """Tests that the base URL of the validator (i.e. with no
@@ -1038,7 +1190,7 @@ class ImplementationValidator:
         try:
             response = response.json()
         except (AttributeError, json.JSONDecodeError):
-            raise ResponseError("Unable to test endpoint page limit.")
+            raise ResponseError("Unable to test endpoint `page_limit` parameter.")
 
         try:
             num_entries = len(response["data"])
@@ -1074,6 +1226,11 @@ class ImplementationValidator:
 
             self._log.debug("Following pagination link to %r.", next_link)
             next_response, _ = self._get_endpoint(next_link)
+            if not next_response:
+                raise ResponseError(
+                    f"Error when testing pagination: the response from `links->next` {next_link!r} failed the previous test."
+                )
+
             check_next_link = bool(check_next_link - 1)
             self._test_page_limit(
                 next_response,
@@ -1188,6 +1345,14 @@ class ImplementationValidator:
                 raise ResponseError(
                     f'Illegal entry "{non_entry_endpoint}" was found in entry_types_by_format"'
                 )
+
+        # Filter out custom extension endpoints that are not covered in the specification
+        available_json_entry_endpoints = [
+            endp
+            for endp in available_json_entry_endpoints
+            if endp in CONF.entry_endpoints
+        ]
+
         return (
             available_json_entry_endpoints,
             "successfully found available entry types in baseinfo",
@@ -1217,7 +1382,7 @@ class ImplementationValidator:
             expected_status_code = [expected_status_code]
 
         if response.status_code not in expected_status_code:
-            message = f"Request to '{request_str}' returned HTTP code {response.status_code} and not expected {expected_status_code}."
+            message = f"Request to '{request_str}' returned HTTP code {response.status_code} and not the allowed {expected_status_code}."
             message += "\nAdditional details:"
             try:
                 for error in response.json().get("errors", []):

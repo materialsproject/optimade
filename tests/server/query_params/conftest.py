@@ -2,6 +2,14 @@ import pytest
 
 
 @pytest.fixture
+def structures():
+    """Fixture to provide a sorted list of structures."""
+    from optimade.server.data import structures
+
+    return sorted(structures, key=lambda x: x["task_id"])
+
+
+@pytest.fixture
 def check_include_response(get_good_response):
     """Fixture to check "good" `include` response"""
     from typing import Union, List, Set

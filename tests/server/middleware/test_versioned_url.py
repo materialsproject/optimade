@@ -1,5 +1,5 @@
 """Test CheckWronglyVersionedBaseUrls middleware"""
-import urllib
+import urllib.parse
 
 import pytest
 
@@ -63,7 +63,7 @@ def test_multiple_versions_in_path(both_clients):
                 urllib.parse.urlparse(url)
             )
 
-        # Test also that the a non-valid OPTIMADE version raises
+        # Test also that a non-valid OPTIMADE version raises
         url = f"{CONFIG.base_url}/v0/info"
         with pytest.raises(VersionNotSupported):
             CheckWronglyVersionedBaseUrls(both_clients.app).check_url(
@@ -74,3 +74,14 @@ def test_multiple_versions_in_path(both_clients):
             CONFIG.base_url = org_base_url
         else:
             CONFIG.base_url = None
+
+
+def test_versioned_base_urls(both_clients):
+    """Test the middleware does not wrongly catch requests to versioned base URLs"""
+    from optimade.server.config import CONFIG
+    from optimade.server.routers.utils import BASE_URL_PREFIXES
+
+    for request in BASE_URL_PREFIXES.values():
+        CheckWronglyVersionedBaseUrls(both_clients.app).check_url(
+            urllib.parse.urlparse(f"{CONFIG.base_url}{request}")
+        )

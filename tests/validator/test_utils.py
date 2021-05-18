@@ -367,3 +367,92 @@ def test_that_system_exit_is_fatal_in_test_case():
     assert validator.results.failure_count == 0
     assert validator.results.optional_failure_count == 0
     assert validator.results.internal_failure_count == 0
+
+
+def test_versions_test_cases():
+    """Check the `/versions` test cases."""
+    from requests import Response
+    from functools import partial
+
+    unversioned_base_url = "https://example.org"
+    versioned_base_url = unversioned_base_url + "/v1"
+
+    def monkey_patched_get_endpoint(
+        url,
+        expected_status_code=200,
+        content=b"version\n1",
+        content_type="text/csv;header=present",
+        **kwargs
+    ):
+        r = Response()
+        if expected_status_code == 200:
+            r._content = content
+            r.headers["content-type"] = content_type
+            r.status_code = 200
+        else:
+            r.status_code = 404
+
+        gets.append(url)
+
+        return r, None
+
+    # Test that the versioned base URL correctly tests the unversioned and then resets
+    validator = ImplementationValidator(base_url=versioned_base_url, verbosity=5)
+    gets = []
+    validator._get_endpoint = monkey_patched_get_endpoint
+    validator._test_versions_endpoint()
+    assert len(gets) == 2
+    assert validator.client.base_url == versioned_base_url
+    assert validator.results.success_count == 1
+    assert validator.results.optional_success_count == 2
+    assert validator.results.failure_count == 0
+
+    # Test that the unversioned base URL correctly tests just the unversioned URL
+    validator = ImplementationValidator(base_url=unversioned_base_url, verbosity=0)
+    gets = []
+    validator._get_endpoint = monkey_patched_get_endpoint
+    validator._test_versions_endpoint()
+    assert len(gets) == 1
+    assert validator.client.base_url == unversioned_base_url
+    assert validator.results.success_count == 1
+    assert validator.results.optional_success_count == 2
+    assert validator.results.failure_count == 0
+
+    # Test that bad content successfully triggers failures
+    bad_content = (b"versions\n1", b"version\n", b"version\n1.1")
+    for content in bad_content:
+        validator = ImplementationValidator(base_url=versioned_base_url, verbosity=0)
+        validator._get_endpoint = partial(monkey_patched_get_endpoint, content=content)
+        validator._test_versions_endpoint()
+        assert validator.client.base_url == versioned_base_url
+        assert validator.results.success_count == 0
+        assert validator.results.failure_count == 1
+        assert validator.results.optional_failure_count == 0
+
+    # Test that missing content-type header triggers a hard failure
+    validator = ImplementationValidator(base_url=versioned_base_url, verbosity=0)
+    validator._get_endpoint = partial(monkey_patched_get_endpoint, content_type="")
+    validator._test_versions_endpoint()
+    assert validator.client.base_url == versioned_base_url
+    assert validator.results.success_count == 0
+    assert validator.results.failure_count == 1
+    assert validator.results.optional_failure_count == 0
+
+    # Test that bad content-type headers successfully trigger *optional* failures
+    bad_content_type = (
+        ("text/csv", 1),
+        ("text/plain", 1),
+        ("header=present", 1),
+        ("x;y", 2),
+        ("application/json;charset=utf-8", 2),
+    )
+    for content_type, num_errors in bad_content_type:
+        validator = ImplementationValidator(base_url=versioned_base_url, verbosity=0)
+        validator._get_endpoint = partial(
+            monkey_patched_get_endpoint, content_type=content_type
+        )
+        validator._test_versions_endpoint()
+        assert validator.client.base_url == versioned_base_url
+        assert validator.results.success_count == 1
+        assert validator.results.failure_count == 0
+        assert validator.results.optional_failure_count == num_errors

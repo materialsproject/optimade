@@ -1,9 +1,4 @@
-import os
-
-from typing import Tuple, List, Union
-import mongomock
-import pymongo.collection
-from fastapi import HTTPException
+from typing import Dict, Tuple, List, Any
 
 from optimade.filterparser import LarkParser
 from optimade.filtertransformers.mongo import MongoTransformer
@@ -12,24 +7,20 @@ from optimade.server.config import CONFIG
 from optimade.server.entry_collections import EntryCollection
 from optimade.server.logger import LOGGER
 from optimade.server.mappers import BaseResourceMapper
-from optimade.server.query_params import EntryListingQueryParams, SingleEntryQueryParams
-
-try:
-    CI_FORCE_MONGO = bool(int(os.environ.get("OPTIMADE_CI_FORCE_MONGO", 0)))
-except (TypeError, ValueError):  # pragma: no cover
-    CI_FORCE_MONGO = False
 
 
-if CONFIG.use_real_mongo or CI_FORCE_MONGO:
+if CONFIG.database_backend.value == "mongodb":
     from pymongo import MongoClient
 
-    client = MongoClient(CONFIG.mongo_uri)
     LOGGER.info("Using: Real MongoDB (pymongo)")
-else:
+
+elif CONFIG.database_backend.value == "mongomock":
     from mongomock import MongoClient
 
-    client = MongoClient()
     LOGGER.info("Using: Mock MongoDB (mongomock)")
+
+if CONFIG.database_backend.value in ("mongomock", "mongodb"):
+    CLIENT = MongoClient(CONFIG.mongo_uri)
 
 
 class MongoCollection(EntryCollection):
@@ -40,38 +31,36 @@ class MongoCollection(EntryCollection):
 
     def __init__(
         self,
-        collection: Union[
-            pymongo.collection.Collection, mongomock.collection.Collection
-        ],
+        name: str,
         resource_cls: EntryResource,
         resource_mapper: BaseResourceMapper,
+        database: str = CONFIG.mongo_database,
     ):
         """Initialize the MongoCollection for the given parameters.
 
         Parameters:
-            collection (Union[pymongo.collection.Collection, mongomock.collection.Collection]):
-                The backend-specific collection.
-            resource_cls (EntryResource): The `EntryResource` model
-                that is stored by the collection.
-            resource_mapper (BaseResourceMapper): A resource mapper
-                object that handles aliases and format changes between
-                deserialization and response.
+            name: The name of the collection.
+            resource_cls: The type of entry resource that is stored by the collection.
+            resource_mapper: A resource mapper object that handles aliases and
+                format changes between deserialization and response.
+            database: The name of the underlying MongoDB database to connect to.
 
         """
         super().__init__(
-            collection,
             resource_cls,
             resource_mapper,
             MongoTransformer(mapper=resource_mapper),
         )
 
         self.parser = LarkParser(version=(1, 0, 0), variant="default")
+        self.collection = CLIENT[database][name]
 
         # check aliases do not clash with mongo operators
         self._check_aliases(self.resource_mapper.all_aliases())
         self._check_aliases(self.resource_mapper.all_length_aliases())
 
     def __len__(self) -> int:
+        """Returns the total number of entries in the collection."""
         return self.collection.estimated_document_count()
 
     def count(self, **kwargs) -> int:
@@ -91,35 +80,41 @@ class MongoCollection(EntryCollection):
             kwargs["filter"] = {}
         return self.collection.count_documents(**kwargs)
 
-    def find(
-        self, params: Union[EntryListingQueryParams, SingleEntryQueryParams]
-    ) -> Tuple[List[EntryResource], int, bool, set]:
-        """Perform the query on the underlying MongoCollection, handling projection
-        and pagination of the output.
+    def insert(self, data: List[EntryResource]) -> None:
+        """Add the given entries to the underlying database.
 
-        Returns:
-            Tuple[List[EntryResource], int, bool, set]: A list of entry resource objects, the number of returned entries,
-            whether more are available with pagination, fields.
+        Warning:
+            No validation is performed on the incoming data.
+
+        Arguments:
+            data: The entry resource objects to add to the database.
 
         """
+        self.collection.insert_many(data)
 
-        criteria = self.handle_query_params(params)
+    def _run_db_query(
+        self, criteria: Dict[str, Any], single_entry: bool = False
+    ) -> Tuple[List[Dict[str, Any]], int, bool]:
+        """Run the query on the backend and collect the results.
 
-        all_fields = criteria.pop("fields")
-        if getattr(params, "response_fields", False):
-            fields = set(params.response_fields.split(","))
-            fields |= self.resource_mapper.get_required_fields()
-        else:
-            fields = all_fields.copy()
+        Arguments:
+            criteria: A dictionary representation of the query parameters.
+            single_entry: Whether or not the caller is expecting a single entry response.
+
+        Returns:
+            The list of entries from the database (without any re-mapping), the total number of
+            entries matching the query and a boolean for whether or not there is more data available.
+
+        """
 
         results = []
         for doc in self.collection.find(**criteria):
             if criteria.get("projection", {}).get("_id"):
                 doc["_id"] = str(doc["_id"])
-            results.append(self.resource_cls(**self.resource_mapper.map_back(doc)))
+            results.append(doc)
 
         nresults_now = len(results)
-        if isinstance(params, EntryListingQueryParams):
+        if not single_entry:
             criteria_nolimit = criteria.copy()
             criteria_nolimit.pop("limit", None)
             data_returned = self.count(**criteria_nolimit)
@@ -128,17 +123,11 @@ class MongoCollection(EntryCollection):
             # SingleEntryQueryParams, e.g., /structures/{entry_id}
             data_returned = nresults_now
             more_data_available = False
-            if nresults_now > 1:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"Instead of a single entry, {nresults_now} entries were found",
-                )
-            results = results[0] if results else None
 
-        return results, data_returned, more_data_available, all_fields - fields
+        return results, data_returned, more_data_available
 
     def _check_aliases(self, aliases):
-        """ Check that aliases do not clash with mongo keywords. """
+        """Check that aliases do not clash with mongo keywords."""
         if any(
             alias[0].startswith("$") or alias[1].startswith("$") for alias in aliases
         ):

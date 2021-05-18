@@ -9,7 +9,7 @@ from optimade.models import (
     StructureResponseOne,
 )
 from optimade.server.config import CONFIG
-from optimade.server.entry_collections import MongoCollection, client
+from optimade.server.entry_collections import create_collection
 from optimade.server.mappers import StructureMapper
 from optimade.server.query_params import EntryListingQueryParams, SingleEntryQueryParams
 
@@ -17,8 +17,8 @@ from optimade.server.routers.utils import get_entries, get_single_entry
 
 router = APIRouter(redirect_slashes=True)
 
-structures_coll = MongoCollection(
-    collection=client[CONFIG.mongo_database][CONFIG.structures_collection],
+structures_coll = create_collection(
+    name=CONFIG.structures_collection,
     resource_cls=StructureResource,
     resource_mapper=StructureMapper,
 )

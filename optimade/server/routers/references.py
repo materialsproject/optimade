@@ -9,7 +9,7 @@ from optimade.models import (
     ReferenceResponseOne,
 )
 from optimade.server.config import CONFIG
-from optimade.server.entry_collections import MongoCollection, client
+from optimade.server.entry_collections import create_collection
 from optimade.server.mappers import ReferenceMapper
 from optimade.server.query_params import EntryListingQueryParams, SingleEntryQueryParams
 
@@ -18,8 +18,8 @@ from optimade.server.routers.utils import get_entries, get_single_entry
 
 router = APIRouter(redirect_slashes=True)
 
-references_coll = MongoCollection(
-    collection=client[CONFIG.mongo_database][CONFIG.references_collection],
+references_coll = create_collection(
+    name=CONFIG.references_collection,
     resource_cls=ReferenceResource,
     resource_mapper=ReferenceMapper,
 )

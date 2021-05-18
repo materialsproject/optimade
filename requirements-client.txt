@@ -1,5 +1,8 @@
-aiida-core==1.5.2
-ase==3.20.1
-numpy==1.19.4
-pymatgen==2020.12.31
-jarvis-tools==2020.11.27
+aiida-core==1.6.3 ; python_version > '3.6'
+aiida-core==1.5.2 ; python_version < '3.7'
+ase==3.21.1
+numpy==1.20.2 ; python_version > '3.6'
+numpy==1.19.5 ; python_version < '3.7'
+pymatgen==2021.3.9; python_version > '3.6'
+pymatgen==2021.2.8.1; python_version < '3.7'
+jarvis-tools==2021.4.29

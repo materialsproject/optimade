@@ -15,6 +15,9 @@ for var, path in data_paths.items():
     try:
         with open(Path(__file__).parent / path) as f:
             globals()[var] = bson.json_util.loads(f.read())
+
+        if var == "structures":
+            globals()[var] = sorted(globals()[var], key=lambda x: x["task_id"])
     except FileNotFoundError:
         if var != "providers":
             raise

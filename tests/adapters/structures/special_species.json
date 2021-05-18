@@ -208,5 +208,76 @@
         ]
         }
     }
+  },
+  {
+    "id": "mpf_1",
+    "type": "structures",
+    "attributes": {
+        "last_modified": "2019-06-08T05:13:37.331000",
+        "elements": [
+            "Ac", "O"
+        ],
+        "nelements": 1,
+        "elements_ratios": [
+        1
+        ],
+        "chemical_formula_descriptive": "AcO",
+        "chemical_formula_reduced": "AcO",
+        "chemical_formula_anonymous": "AB",
+        "dimension_types": [
+        1,
+        1,
+        1
+        ],
+        "nperiodic_dimensions": 3,
+        "lattice_vectors": [
+        [
+            1.2503264826932692,
+            0,
+            0
+        ],
+        [
+            0,
+            9.888509716321765,
+            0
+        ],
+        [
+            0,
+            0,
+            0.2972637673241818
+        ]
+        ],
+        "cartesian_site_positions": [
+        [
+            0.17570227444196573,
+            0.17570227444196573,
+            0.17570227444196573
+        ]
+        ],
+        "nsites": 1,
+        "species_at_sites": [
+        "AcO"
+        ],
+        "species": [
+        {
+            "name": "AcO",
+            "chemical_symbols": ["Ac", "O"],
+            "concentration": [0.9, 0.1],
+            "mass": [227.0, 15.999]
+        }
+        ],
+        "structure_features": ["disorder"],
+        "_exmpl_chemsys": "AcO"
+    },
+    "relationships": {
+        "references": {
+        "data": [
+            {
+            "id": "dijkstra1968",
+            "type": "references"
+            }
+        ]
+        }
+    }
   }
 ]

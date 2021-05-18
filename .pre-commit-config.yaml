@@ -3,7 +3,7 @@ default_language_version:
 
 repos:
   - repo: https://github.com/ambv/black
-    rev: 20.8b1
+    rev: 21.4b2
     hooks:
     - id: black
       name: Blacken
@@ -18,7 +18,7 @@ repos:
     - id: end-of-file-fixer
 
   - repo: https://gitlab.com/pycqa/flake8
-    rev: '3.8.4'
+    rev: '3.9.1'
     hooks:
     -   id: flake8
 

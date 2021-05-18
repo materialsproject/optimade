@@ -352,6 +352,13 @@ class Response(BaseModel):
         return values
 
     class Config:
+        """The specification mandates that datetimes must be encoded following
+        [RFC3339](https://tools.ietf.org/html/rfc3339), which does not support
+        fractional seconds, thus they must be stripped in the response. This can
+        cause issues when the underlying database contains fields that do include
+        microseconds, as filters may return unexpected results.
+        """
+
         json_encoders = {
             datetime: lambda v: v.astimezone(timezone.utc).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"

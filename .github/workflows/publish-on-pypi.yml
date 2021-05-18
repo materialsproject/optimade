@@ -15,12 +15,12 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.3.4
       with:
         submodules: true
 
     - name: Set up Python 3.8
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v2.2.2
       with:
         python-version: 3.8
 
@@ -31,7 +31,7 @@ jobs:
         pip install -U -e .[all] --use-deprecated=legacy-resolver
 
     - name: Update changelog
-      uses: CharMixer/auto-changelog-action@v1.1
+      uses: CharMixer/auto-changelog-action@v1.4
       with:
         token: ${{ secrets.RELEASE_PAT_CASPER }}
 
@@ -39,7 +39,7 @@ jobs:
       run: .github/workflows/update_docs.sh
 
     - name: Update '${{ env.PUBLISH_UPDATE_BRANCH }}'
-      uses: CasperWA/push-protected@v2
+      uses: CasperWA/push-protected@v2.3.0
       with:
         token: ${{ secrets.RELEASE_PAT_CASPER }}
         branch: ${{ env.PUBLISH_UPDATE_BRANCH }}
@@ -61,7 +61,7 @@ jobs:
       run: mkdocs build
 
     - name: Deploy
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v3.8.0
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages

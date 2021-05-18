@@ -18,35 +18,42 @@ with open(module_dir.joinpath("optimade/__init__.py")) as version_file:
 # Dependencies
 # Server minded
 django_deps = ["django>=2.2.9,<4.0"]
-elastic_deps = ["elasticsearch-dsl>=6.4,<8.0"]
+elastic_deps = ["elasticsearch-dsl~=6.4,<7.0"]
 mongo_deps = ["pymongo~=3.11", "mongomock~=3.22"]
-server_deps = ["uvicorn~=0.13.3", "Jinja2~=2.11"] + mongo_deps
+server_deps = [
+    "uvicorn~=0.13.4",
+    "Jinja2~=2.11",
+    "pyyaml~=5.1",  # Keep at pyyaml 5.1 for aiida-core support
+] + mongo_deps
 
 # Client minded
-aiida_deps = ["aiida-core~=1.5.2"]
-ase_deps = ["ase~=3.20"]
-cif_deps = ["numpy~=1.19"]
+aiida_deps = ["aiida-core~=1.5"]  # Keep at 1.5 for Python 3.6 support
+ase_deps = ["ase~=3.21"]
+cif_deps = ["numpy~=1.19"]  # Keep at 1.19 for Python 3.6 support
 pdb_deps = cif_deps
-pymatgen_deps = ["pymatgen==2020.12.31"]
-jarvis_deps = ["jarvis-tools==2020.11.27"]
+pymatgen_deps = [
+    "pymatgen==2021.2.8.1;python_version<'3.7'",
+    "pymatgen==2021.3.9;python_version>'3.6'",
+]
+jarvis_deps = ["jarvis-tools==2021.4.29"]
 client_deps = cif_deps
 
 # General
 docs_deps = [
     "mkdocs~=1.1",
     "mkdocs-awesome-pages-plugin~=2.5",
-    "mkdocs-material~=6.2",
-    "mkdocs-minify-plugin~=0.3.0",
-    "mkdocstrings~=0.13.6",
+    "mkdocs-material~=7.1",
+    "mkdocs-minify-plugin~=0.4.0",
+    "mkdocstrings~=0.15.0",
 ]
 testing_deps = [
     "pytest~=6.2",
-    "pytest-cov~=2.10",
+    "pytest-cov~=2.11",
     "codecov~=2.1",
-    "jsondiff~=1.2",
+    "jsondiff~=1.3",
 ] + server_deps
 dev_deps = (
-    ["pylint~=2.6", "pre-commit~=2.9", "invoke~=1.5"]
+    ["pylint~=2.8", "pre-commit~=2.11", "invoke~=1.5"]
     + docs_deps
     + testing_deps
     + client_deps
@@ -88,12 +95,12 @@ setup(
     ],
     python_requires=">=3.6",
     install_requires=[
-        "lark-parser~=0.11.1",
+        "lark-parser~=0.11.2",
         "fastapi~=0.63.0",
-        "pydantic~=1.6.1",
+        "pydantic~=1.8,>=1.8.2",
         "email_validator~=1.1",
         "requests~=2.25",
-        'typing-extensions~=3.7;python_version<"3.8"',
+        "typing-extensions~=3.10;python_version<'3.8'",
     ],
     extras_require={
         "all": all_deps,

@@ -11,6 +11,7 @@ try:
     import numpy as np
 except ImportError:
     from warnings import warn
+    from optimade.adapters.warnings import AdapterPackageNotFound
 
     np = None
     NUMPY_NOT_FOUND = "NumPy not found, cannot convert structure to your desired format"
@@ -33,7 +34,7 @@ def scaled_cell(
 
     """
     if globals().get("np", None) is None:
-        warn(NUMPY_NOT_FOUND)
+        warn(NUMPY_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     cell = np.asarray(cell)
@@ -66,7 +67,7 @@ def fractional_coordinates(
 
     """
     if globals().get("np", None) is None:
-        warn(NUMPY_NOT_FOUND)
+        warn(NUMPY_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     cell = np.asarray(cell)
@@ -105,7 +106,7 @@ def cell_to_cellpar(
 
     """
     if globals().get("np", None) is None:
-        warn(NUMPY_NOT_FOUND)
+        warn(NUMPY_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     cell = np.asarray(cell)
@@ -138,7 +139,7 @@ def unit_vector(x: Vector3D) -> Vector3D:
 
     """
     if globals().get("np", None) is None:
-        warn(NUMPY_NOT_FOUND)
+        warn(NUMPY_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     y = np.array(x, dtype="float")
@@ -191,7 +192,7 @@ def cellpar_to_cell(
 
     """
     if globals().get("np", None) is None:
-        warn(NUMPY_NOT_FOUND)
+        warn(NUMPY_NOT_FOUND, AdapterPackageNotFound)
         return None
 
     if a_direction is None:
