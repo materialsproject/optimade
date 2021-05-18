@@ -183,3 +183,27 @@ class TestStructuresWithNullFieldsMatchUnknownFilter(RegularEndpointTests):
     def test_structures_endpoint_data(self):
         """Check that all structures are returned."""
         assert len(self.json_response["data"]) == 17
+
+
+class TestStructuresWithUnknownResponseFields(RegularEndpointTests):
+    """Tests that structures with e.g., `'assemblies':null` do get
+    returned for queries testing for "UNKNOWN" fields.
+
+    """
+
+    request_str = "/structures?filter=assemblies IS UNKNOWN&response_fields=assemblies,_other_provider_field,chemical_formula_anonymous"
+    response_cls = StructureResponseMany
+
+    def test_structures_endpoint_data(self):
+        """Check that all structures are returned."""
+        assert len(self.json_response["data"]) == 17
+        keys = ("_other_provider_field", "assemblies", "chemical_formula_anonymous")
+        for key in keys:
+            assert all(key in doc["attributes"] for doc in self.json_response["data"])
+        assert all(
+            doc["attributes"]["_other_provider_field"] is None
+            for doc in self.json_response["data"]
+        )
+        assert all(
+            len(doc["attributes"]) == len(keys) for doc in self.json_response["data"]
+        )
