@@ -31,7 +31,7 @@ class Quantity:
 
     Attributes:
         name: The name of the quantity as used in the filter expressions.
-        backend_field: The name of the field for this quanity in elastic search, will be
+        backend_field: The name of the field for this quantity in the backend database, will be
             `name` by default.
         length_quantity: Another (typically integer) [`Quantity`][optimade.filtertransformers.base_transformer.Quantity]
             that can be queried as the length of this quantity, e.g. `elements` and `nelements`. Backends
@@ -67,7 +67,7 @@ class BaseTransformer(abc.ABC, Transformer):
         "=": None,
     }
 
-    # map from operators to their syntactic (NOT logical) inverse to handle
+    # map from operators to their syntactic (as opposed to logical) inverse to handle
     # equivalence between cases like "A > 3" and "3 < A".
     _reversed_operator_map = {
         ">": "<",
@@ -292,7 +292,7 @@ class BaseTransformer(abc.ABC, Transformer):
     def expression_clause(self, arg):
         """expression_clause: expression_phrase ( AND expression_phrase )*"""
 
-    def expression_phrase(self, args):
+    def expression_phrase(self, arg):
         """expression_phrase: [ NOT ] ( comparison | "(" expression ")" )"""
 
     def property_first_comparison(self, arg):

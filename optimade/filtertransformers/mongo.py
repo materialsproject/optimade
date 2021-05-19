@@ -503,5 +503,3 @@ def recursive_postprocessing(filter_, condition, replacement):
         return _cached_filter
 
     return filter_
-
-    return filter_

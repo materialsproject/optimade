@@ -151,7 +151,7 @@ class ElasticTransformer(BaseTransformer):
             return Q(query_type, **{field: value})
 
         if op == "!=":
-            # != queries must also include an existence/v check
+            # != queries must also include an existence check
             # Note that for MongoDB, `$exists` will include null-valued fields,
             # where as in ES `exists` excludes them.
             # pylint: disable=invalid-unary-operand-type

@@ -505,7 +505,11 @@ class TestMongoTransformer:
         from optimade.filtertransformers.mongo import MongoTransformer
 
         class MyMapper(mapper("StructureMapper")):
-            ALIASES = (("elements", "my_elements"), ("nelements", "nelem"))
+            ALIASES = (
+                ("elements", "my_elements"),
+                ("nelements", "nelem"),
+                ("elements_ratios", "ratios"),
+            )
             LENGTH_ALIASES = (
                 ("chemsys", "nelements"),
                 ("cartesian_site_positions", "nsites"),
@@ -529,6 +533,11 @@ class TestMongoTransformer:
         assert transformer.transform(
             parser.parse("cartesian_site_positions LENGTH 3")
         ) == {"nsites": 3}
+
+        assert transformer.transform(parser.parse("elements_ratios LENGTH 3")) == {
+            "ratios": {"$size": 3, "$exists": True}
+        }
+
         assert transformer.transform(
             parser.parse("cartesian_site_positions LENGTH >= 10")
         ) == {"nsites": {"$gte": 10}}
