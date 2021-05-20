@@ -2,30 +2,107 @@ from typing import Tuple, Optional, Type, Set
 import warnings
 
 from optimade.models.entries import EntryResource
+from optimade.server.config import CONFIG
 
 __all__ = ("BaseResourceMapper",)
 
 
-class classproperty(property):
-    """A simple extension of the property decorator that binds to types
-    rather than instances.
+class MetaMapper(type):
 
-    Modelled on this [StackOverflow answer](https://stackoverflow.com/a/5192374)
-    with some tweaks to allow mkdocstrings to do its thing.
+    _supported_prefixes = None
+    _endpoint = None
+    _all_attributes = None
+    _entry_resource_attributes = None
+    _all_aliases = None
+    PROVIDER_FIELDS: Tuple[str] = ()
+    ALIASES: Tuple[Tuple[str, str]] = ()
+    LENGTH_ALIASES: Tuple[Tuple[str, str]] = ()
 
-    """
+    @property
+    def SUPPORTED_PREFIXES(cls) -> Set[str]:
+        """A set of prefixes handled by this entry type.
 
-    def __init__(self, func):
-        self.__name__ = func.__name__
-        self.__module__ = func.__module__
-        self.__doc__ = func.__doc__
-        self.__wrapped__ = func
+        !!! note
+            This implementation only includes the provider prefix,
+            but in the future this property may be extended to include other
+            namespaces (for serving fields from, e.g., other providers or
+            domain-specific terms).
 
-    def __get__(self, _, owner):
-        return self.__wrapped__(owner)
+        """
+        if cls._supported_prefixes is None:
+            cls._supported_prefixes = {CONFIG.provider.prefix}
+        return cls._supported_prefixes
+
+    @property
+    def ALL_ATTRIBUTES(cls) -> Set[str]:
+        """Returns all attributes served by this entry."""
+        if cls._all_attributes is None:
+
+            cls._all_attributes = (
+                set(cls.ENTRY_RESOURCE_ATTRIBUTES)
+                .union(
+                    cls.get_optimade_field(field)
+                    for field in CONFIG.provider_fields.get(cls.ENDPOINT, ())
+                )
+                .union(
+                    set(cls.get_optimade_field(field) for field in cls.PROVIDER_FIELDS)
+                )
+            )
+
+        return cls._all_attributes
+
+    @property
+    def ENTRY_RESOURCE_ATTRIBUTES(cls) -> Set[str]:
+        if cls._entry_resource_attributes is None:
+            from optimade.server.schemas import retrieve_queryable_properties
+
+            cls._entry_resource_attributes = retrieve_queryable_properties(
+                cls.ENTRY_RESOURCE_CLASS.schema()
+            )
+        return cls._entry_resource_attributes
+
+    @property
+    def ENDPOINT(cls) -> str:
+        if cls._endpoint is None:
+            cls._endpoint = (
+                cls.ENTRY_RESOURCE_CLASS.schema()
+                .get("properties", {})
+                .get("type", {})
+                .get("const", "")
+            )
+
+        return cls._endpoint
+
+    @classmethod
+    def all_aliases(cls) -> Tuple[Tuple[str, str]]:
+        """Returns all of the associated aliases for this entry type,
+        including those defined by the server config. The first member
+        of each tuple is the OPTIMADE-compliant field name, the second
+        is the backend-specific field name.
+
+        Returns:
+            A tuple of alias tuples.
+
+        """
+        if cls._all_aliases is None:
+
+            cls._all_aliases = (
+                tuple(
+                    (f"_{CONFIG.provider.prefix}_{field}", field)
+                    for field in CONFIG.provider_fields.get(cls.ENDPOINT, [])
+                )
+                + tuple(
+                    (f"_{CONFIG.provider.prefix}_{field}", field)
+                    for field in cls.PROVIDER_FIELDS
+                )
+                + tuple(CONFIG.aliases.get(cls.ENDPOINT, {}).items())
+                + cls.ALIASES
+            )
+
+        return cls._all_aliases
 
 
-class BaseResourceMapper:
+class BaseResourceMapper(metaclass=MetaMapper):
     """
     Generic Resource Mapper that defines and performs the mapping
     between objects in the database and the resource objects defined by
@@ -57,82 +134,9 @@ class BaseResourceMapper:
     KNOWN_PROVIDER_PREFIXES: Set[str] = set(
         prov["id"] for prov in PROVIDERS.get("data", [])
     )
-    ALIASES: Tuple[Tuple[str, str]] = ()
-    LENGTH_ALIASES: Tuple[Tuple[str, str]] = ()
-    PROVIDER_FIELDS: Tuple[str] = ()
     ENTRY_RESOURCE_CLASS: Type[EntryResource] = EntryResource
     RELATIONSHIP_ENTRY_TYPES: Set[str] = {"references", "structures"}
     TOP_LEVEL_NON_ATTRIBUTES_FIELDS: Set[str] = {"id", "type", "relationships", "links"}
-
-    @classmethod
-    def all_aliases(cls) -> Tuple[Tuple[str, str]]:
-        """Returns all of the associated aliases for this entry type,
-        including those defined by the server config. The first member
-        of each tuple is the OPTIMADE-compliant field name, the second
-        is the backend-specific field name.
-
-        Returns:
-            A tuple of alias tuples.
-
-        """
-        from optimade.server.config import CONFIG
-
-        return (
-            tuple(
-                (f"_{CONFIG.provider.prefix}_{field}", field)
-                for field in CONFIG.provider_fields.get(cls.ENDPOINT, [])
-            )
-            + tuple(
-                (f"_{CONFIG.provider.prefix}_{field}", field)
-                for field in cls.PROVIDER_FIELDS
-            )
-            + tuple(CONFIG.aliases.get(cls.ENDPOINT, {}).items())
-            + cls.ALIASES
-        )
-
-    @classproperty
-    def SUPPORTED_PREFIXES(cls) -> Set[str]:
-        """A set of prefixes handled by this entry type.
-
-        !!! note
-            This implementation only includes the provider prefix,
-            but in the future this property may be extended to include other
-            namespaces (for serving fields from, e.g., other providers or
-            domain-specific terms).
-
-        """
-        from optimade.server.config import CONFIG
-
-        return {CONFIG.provider.prefix}
-
-    @classproperty
-    def ALL_ATTRIBUTES(cls) -> Set[str]:
-        """Returns all attributes served by this entry."""
-        from optimade.server.config import CONFIG
-
-        return (
-            set(cls.ENTRY_RESOURCE_ATTRIBUTES)
-            .union(
-                cls.get_optimade_field(field)
-                for field in CONFIG.provider_fields.get(cls.ENDPOINT, ())
-            )
-            .union(set(cls.get_optimade_field(field) for field in cls.PROVIDER_FIELDS))
-        )
-
-    @classproperty
-    def ENTRY_RESOURCE_ATTRIBUTES(cls) -> Set[str]:
-        from optimade.server.schemas import retrieve_queryable_properties
-
-        return retrieve_queryable_properties(cls.ENTRY_RESOURCE_CLASS.schema())
-
-    @classproperty
-    def ENDPOINT(cls) -> str:
-        return (
-            cls.ENTRY_RESOURCE_CLASS.schema()
-            .get("properties", {})
-            .get("type", {})
-            .get("const", "")
-        )
 
     @classmethod
     def all_length_aliases(cls) -> Tuple[Tuple[str, str]]:
@@ -143,8 +147,6 @@ class BaseResourceMapper:
             A tuple of length alias tuples.
 
         """
-        from optimade.server.config import CONFIG
-
         return cls.LENGTH_ALIASES + tuple(
             CONFIG.length_aliases.get(cls.ENDPOINT, {}).items()
         )
@@ -170,7 +172,7 @@ class BaseResourceMapper:
         be used in an API filter.
 
         Aliases are read from
-        [`all_aliases()`][optimade.server.mappers.entries.BaseResourceMapper.all_aliases].
+        [`all_aliases()`][optimade.server.mappers.entries.MetaMapper.all_aliases].
 
         If a dot-separated OPTIMADE field is provided, e.g., `species.mass`, only the first part will be mapped.
         This means for an (OPTIMADE, DB) alias of (`species`, `kinds`), `get_backend_fields("species.mass")`
@@ -209,7 +211,7 @@ class BaseResourceMapper:
             field: OPTIMADE field name.
 
         Returns:
-            Aliased field as found in [`all_aliases()`][optimade.server.mappers.entries.BaseResourceMapper.all_aliases].
+            Aliased field as found in [`all_aliases()`][optimade.server.mappers.entries.MetaMapper.all_aliases].
 
         """
         warnings.warn(
@@ -224,7 +226,7 @@ class BaseResourceMapper:
         ready to be used to construct the OPTIMADE-compliant JSON response.
 
         Aliases are read from
-        [`all_aliases()`][optimade.server.mappers.entries.BaseResourceMapper.all_aliases].
+        [`all_aliases()`][optimade.server.mappers.entries.MetaMapper.all_aliases].
 
         Arguments:
             backend_field: The backend field to attempt to map to an OPTIMADE field.
