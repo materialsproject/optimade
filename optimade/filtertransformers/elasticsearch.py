@@ -1,4 +1,4 @@
-from typing import Dict, Union, Type
+from typing import Dict, Union, Type, Optional
 from lark import v_args
 from elasticsearch_dsl import Q, Text, Keyword, Integer, Field
 
@@ -33,6 +33,13 @@ class ElasticsearchQuantity(Quantity):
             work for quantities that share the same nested object quantity.
     """
 
+    name: str
+    backend_field: Optional[str]
+    length_quantity: Optional["ElasticsearchQuantity"]
+    elastic_mapping_type: Optional[Field]
+    has_only_quantity: Optional["ElasticsearchQuantity"]
+    nested_quantity: Optional["ElasticsearchQuantity"]
+
     def __init__(
         self,
         name: str,
@@ -42,6 +49,28 @@ class ElasticsearchQuantity(Quantity):
         has_only_quantity: "ElasticsearchQuantity" = None,
         nested_quantity: "ElasticsearchQuantity" = None,
     ):
+        """Initialise the quantity from its name, aliases and mapping type.
+
+        Parameters:
+            name: The name of the quantity as used in the filter expressions.
+            backend_field: The name of the field for this quantity in Elasticsearch, will be
+                ``name`` by default.
+            elastic_mapping_type: A decendent of an `elasticsearch_dsl.Field` that denotes which
+                mapping type was used in the Elasticsearch index.
+            length_quantity: Elasticsearch does not support length of arrays, but we can
+                map fields with array to other fields with ints about the array length. The
+                LENGTH operator will only be supported for quantities with this attribute.
+            has_only_quantity: Elasticsearch does not support exclusive search on arrays, like
+                a list of chemical elements. But, we can order all elements by atomic number
+                and use a keyword field with all elements to perform this search. This only
+                works for elements (i.e. labels in ``CHEMICAL_SYMBOLS``) and quantities
+                with this attribute.
+            nested_quantity: To support optimade's 'zipped tuple' feature (e.g.
+                'elements:elements_ratios HAS "H":>0.33), we use elasticsearch nested objects
+                and nested queries. This quantity will provide the field for the nested
+                object that contains the quantity (and others). The zipped tuples will only
+                work for quantities that share the same nested object quantity.
+        """
 
         super().__init__(name, backend_field, length_quantity)
 
@@ -67,7 +96,7 @@ class ElasticTransformer(BaseTransformer):
         ">=": "gte",
     }
 
-    __quantity_type: Type[ElasticsearchQuantity] = ElasticsearchQuantity
+    _quantity_type: Type[ElasticsearchQuantity] = ElasticsearchQuantity
 
     def __init__(
         self, mapper: BaseResourceMapper = None, quantities: Dict[str, Quantity] = None

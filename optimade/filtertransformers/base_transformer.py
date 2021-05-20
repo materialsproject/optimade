@@ -6,7 +6,7 @@ for turning filters parsed by lark into backend-specific queries.
 """
 
 import abc
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Optional
 import warnings
 
 from lark import Transformer, v_args, Tree
@@ -39,12 +39,27 @@ class Quantity:
 
     """
 
+    name: str
+    backend_field: Optional[str]
+    length_quantity: Optional["Quantity"]
+
     def __init__(
         self,
         name: str,
         backend_field: str = None,
         length_quantity: "Quantity" = None,
     ):
+        """Initialise the `quantity` from it's name and aliases.
+
+        Parameters:
+            name: The name of the quantity as used in the filter expressions.
+            backend_field: The name of the field for this quantity in the backend database, will be
+                `name` by default.
+            length_quantity: Another (typically integer) [`Quantity`][optimade.filtertransformers.base_transformer.Quantity]
+                that can be queried as the length of this quantity, e.g. `elements` and `nelements`. Backends
+                can then decide whether to use this for all "LENGTH" queries.
+
+        """
 
         self.name = name
         self.backend_field = backend_field if backend_field is not None else name
@@ -78,8 +93,8 @@ class BaseTransformer(abc.ABC, Transformer):
         "!=": "!=",
     }
 
-    __quantity_type: Type[Quantity] = Quantity
-    __quantities = None
+    _quantity_type: Type[Quantity] = Quantity
+    _quantities = None
 
     def __init__(
         self, mapper: BaseResourceMapper = None
@@ -104,14 +119,14 @@ class BaseTransformer(abc.ABC, Transformer):
         """A mapping from the OPTIMADE field name to the corresponding
         [`Quantity`][optimade.filtertransformers.base_transformer.Quantity] objects.
         """
-        if self.__quantities is None:
-            self.__quantities = self.__build_quantities()
+        if self._quantities is None:
+            self._quantities = self.__build_quantities()
 
-        return self.__quantities
+        return self._quantities
 
     @quantities.setter
     def __set_quantities(self, quantities: Dict[str, Quantity]) -> None:
-        self.__quantities = quantities
+        self._quantities = quantities
 
     def __build_quantities(self) -> Dict[str, Quantity]:
         """Creates a dictionary of field names mapped to
@@ -132,13 +147,13 @@ class BaseTransformer(abc.ABC, Transformer):
                 ) or self.mapper.length_alias_for(alias)
 
                 if field not in quantities:
-                    quantities[field] = self.__quantity_type(
+                    quantities[field] = self._quantity_type(
                         name=field, backend_field=alias
                     )
 
                 if length_alias:
                     if length_alias not in quantities:
-                        quantities[length_alias] = self.__quantity_type(
+                        quantities[length_alias] = self._quantity_type(
                             name=length_alias,
                             backend_field=self.mapper.get_backend_field(length_alias),
                         )
@@ -248,7 +263,7 @@ class BaseTransformer(abc.ABC, Transformer):
 
         quantity = self.quantities.get(quantity_name, None)
         if quantity is None:
-            quantity = self.__quantity_type(name=str(quantity_name))
+            quantity = self._quantity_type(name=str(quantity_name))
 
         return quantity
 
