@@ -42,8 +42,6 @@ class BaseResourceMapper:
         ENTRY_RESOURCE_CLASS: The entry type that this mapper corresponds to.
         PROVIDER_FIELDS: a tuple of extra field names that this
             mapper should support when querying with the database prefix.
-        REQUIRED_FIELDS: the set of fieldnames to return
-            when mapping to the OPTIMADE format.
         TOP_LEVEL_NON_ATTRIBUTES_FIELDS: the set of top-level
             field names common to all endpoints.
 
@@ -65,7 +63,6 @@ class BaseResourceMapper:
     ENTRY_RESOURCE_CLASS: Type[EntryResource] = EntryResource
     RELATIONSHIP_ENTRY_TYPES: Set[str] = {"references", "structures"}
     TOP_LEVEL_NON_ATTRIBUTES_FIELDS: Set[str] = {"id", "type", "relationships", "links"}
-    REQUIRED_FIELDS: set = set()
 
     @classmethod
     def all_aliases(cls) -> Tuple[Tuple[str, str]]:
@@ -278,9 +275,7 @@ class BaseResourceMapper:
             REQUIRED response fields.
 
         """
-        res = cls.TOP_LEVEL_NON_ATTRIBUTES_FIELDS.copy()
-        res.update(cls.REQUIRED_FIELDS)
-        return res
+        return cls.TOP_LEVEL_NON_ATTRIBUTES_FIELDS
 
     @classmethod
     def map_back(cls, doc: dict) -> dict:
