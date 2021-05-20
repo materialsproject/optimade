@@ -128,15 +128,15 @@ class BaseTransformer(abc.ABC, Transformer):
         [`Quantity`][optimade.filtertransformers.base_transformer.Quantity] objects.
         """
         if self._quantities is None:
-            self._quantities = self.__build_quantities()
+            self._quantities = self._build_quantities()
 
         return self._quantities
 
     @quantities.setter
-    def __set_quantities(self, quantities: Dict[str, Quantity]) -> None:
+    def quantities(self, quantities: Dict[str, Quantity]) -> None:
         self._quantities = quantities
 
-    def __build_quantities(self) -> Dict[str, Quantity]:
+    def _build_quantities(self) -> Dict[str, Quantity]:
         """Creates a dictionary of field names mapped to
         [`Quantity`][optimade.filtertransformers.base_transformer.Quantity] objects from the
         fields registered by the mapper.
