@@ -276,7 +276,7 @@ jobs:
     - name: Build
       run: |
         invoke create-api-reference-docs
-        mkdocs build --strict --verbose
+        mkdocs build --strict
 
   test_build:
     runs-on: ubuntu-latest

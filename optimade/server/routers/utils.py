@@ -75,11 +75,12 @@ def handle_response_fields(
     Parameters:
         exclude_fields: Fields under `attributes` to be excluded from the response.
         include_fields: Fields under `attributes` that were requested that should be
-        set to null if missing in the entry.
+            set to null if missing in the entry.
 
     Returns:
-        List of resulting resources after pruning according to the `response_fields`
-        OPTIMADE URL query parameter.
+        List of resulting resources as dictionaries after pruning according to
+        the `response_fields` OPTIMADE URL query parameter.
+
     """
     if not isinstance(results, list):
         results = [results]
