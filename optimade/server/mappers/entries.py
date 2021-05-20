@@ -9,10 +9,20 @@ __all__ = ("BaseResourceMapper",)
 class classproperty(property):
     """A simple extension of the property decorator that binds to types
     rather than instances.
+
+    Modelled on this [StackOverflow answer](https://stackoverflow.com/a/5192374)
+    with some tweaks to allow mkdocstrings to do its thing.
+
     """
 
-    def __get__(self, obj, objtype=None):
-        return super(classproperty, self).__get__(objtype)
+    def __init__(self, func):
+        self.__name__ = func.__name__
+        self.__module__ = func.__module__
+        self.__doc__ = func.__doc__
+        self.__wrapped__ = func
+
+    def __get__(self, _, owner):
+        return self.__wrapped__(owner)
 
 
 class BaseResourceMapper:
@@ -88,10 +98,10 @@ class BaseResourceMapper:
         """A set of prefixes handled by this entry type.
 
         !!! note
-        This implementation only includes the provider prefix,
-        but in the future this property may be extended to include other
-        namespaces (for serving fields from, e.g., other providers or
-        domain-specific terms).
+            This implementation only includes the provider prefix,
+            but in the future this property may be extended to include other
+            namespaces (for serving fields from, e.g., other providers or
+            domain-specific terms).
 
         """
         from optimade.server.config import CONFIG
