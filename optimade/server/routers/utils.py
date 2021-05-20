@@ -66,7 +66,7 @@ def handle_response_fields(
     results: Union[List[EntryResource], EntryResource],
     exclude_fields: Set[str],
     include_fields: Set[str],
-) -> dict:
+) -> List[dict]:
     """Handle query parameter `response_fields`.
 
     It is assumed that all fields are under `attributes`.
