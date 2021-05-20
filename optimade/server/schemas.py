@@ -9,7 +9,7 @@ ENTRY_INFO_SCHEMAS = {
 def retrieve_queryable_properties(
     schema: dict, queryable_properties: list = None
 ) -> dict:
-    """Recurisvely loops through the schema of a pydantic model and
+    """Recursively loops through the schema of a pydantic model and
     resolves all references, returning a dictionary of all the
     OPTIMADE-queryable properties of that model.
 

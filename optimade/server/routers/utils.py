@@ -67,14 +67,19 @@ def handle_response_fields(
     exclude_fields: Set[str],
     include_fields: Set[str],
 ) -> dict:
-    """Handle query parameter ``response_fields``
+    """Handle query parameter `response_fields`.
 
-    It is assumed that all fields are under ``attributes``.
+    It is assumed that all fields are under `attributes`.
     This is due to all other top-level fields are REQUIRED in the response.
 
-    :param exclude_fields: Fields under ``attributes`` to be excluded from the response.
-    :param include_fields: Fields under `attributes` that were requested that should be
+    Parameters:
+        exclude_fields: Fields under `attributes` to be excluded from the response.
+        include_fields: Fields under `attributes` that were requested that should be
         set to null if missing in the entry.
+
+    Returns:
+        List of resulting resources after pruning according to the `response_fields`
+        OPTIMADE URL query parameter.
     """
     if not isinstance(results, list):
         results = [results]
@@ -83,7 +88,7 @@ def handle_response_fields(
     while results:
         new_entry = results.pop(0).dict(exclude_unset=True)
 
-        # Remove fields excluded by their omission in `reponse_fields`
+        # Remove fields excluded by their omission in `response_fields`
         for field in exclude_fields:
             if field in new_entry["attributes"]:
                 del new_entry["attributes"][field]

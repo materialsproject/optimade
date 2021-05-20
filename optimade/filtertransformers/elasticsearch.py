@@ -14,7 +14,7 @@ class ElasticsearchQuantity(Quantity):
 
     Attributes:
         name: The name of the quantity as used in the filter expressions.
-        backend_field: The name of the field for this quanity in elastic search, will be
+        backend_field: The name of the field for this quantity in Elasticsearch, will be
             ``name`` by default.
         elastic_mapping_type: A decendent of an `elasticsearch_dsl.Field` that denotes which
             mapping type was used in the Elasticsearch index.
@@ -85,7 +85,7 @@ class ElasticTransformer(BaseTransformer):
 
         If passed a string quantity name:
         - Check that the name does not match a relationship type,
-          raising a `NotImplementedError` if it does. If the
+          raising a `NotImplementedError` if it does.
         - If the string is prefixed by an underscore, assume this is a
           provider-specific field from another provider and simply return it.
           The original `property` rule would have already filtered out provider
@@ -323,7 +323,7 @@ class ElasticTransformer(BaseTransformer):
 
             if quantity.length_quantity is None:
                 raise NotImplementedError(
-                    "LENGTH is not supported for '%s'" % quantity.name
+                    f"LENGTH is not supported for {quantity.name!r}"
                 )
             quantity = quantity.length_quantity
             return self._query_op(quantity, op, value)
