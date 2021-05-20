@@ -26,8 +26,9 @@ class Quantity:
     """Class to provide information about available quantities to the transformer.
 
     The transformer can use [`Quantity`][optimade.filtertransformers.base_transformer.Quantity]'s to
-    (a) do some semantic checks,
-    (b) map quantities to the underlying backend field name.
+
+    * do some semantic checks,
+    * map quantities to the underlying backend field name.
 
     Attributes:
         name: The name of the quantity as used in the filter expressions.
@@ -70,9 +71,16 @@ class BaseTransformer(abc.ABC, Transformer):
     """Generic filter transformer that handles various
     parts of the grammar in a backend non-specific way.
 
+    Attributes:
+        operator_map: A map from comparison operators
+            to their backend-specific versions.
+        mapper: A resource mapper object that defines the
+            expected fields and acts as a container for
+            various field-related configuration.
+
     """
 
-    """A map from comparison operators to their backend-specific versions"""  # pylint: disable=pointless-string-statement
+    mapper: Optional[BaseResourceMapper] = None
     operator_map: Dict[str, str] = {
         "<": None,
         "<=": None,
@@ -214,7 +222,7 @@ class BaseTransformer(abc.ABC, Transformer):
         """
         raise NotImplementedError("Comparing strings is not yet implemented.")
 
-    def property(self, args):
+    def property(self, args: list) -> Any:
         """property: IDENTIFIER ( "." IDENTIFIER )*
 
         If this transformer has an associated mapper, the property
