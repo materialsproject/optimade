@@ -20,6 +20,19 @@ from optimade.server.config import CONFIG
 from optimade.server.entry_collections import EntryCollection
 from optimade.server.exceptions import BadRequest
 from optimade.server.query_params import EntryListingQueryParams, SingleEntryQueryParams
+from optimade.utils import mongo_id_for_database, get_providers
+
+__all__ = (
+    "BASE_URL_PREFIXES",
+    "meta_values",
+    "handle_response_fields",
+    "get_included_relationships",
+    "get_base_url",
+    "get_entries",
+    "get_single_entry",
+    "mongo_id_for_database",
+    "get_providers",
+)
 
 # we need to get rid of any release tags (e.g. -rc.2) and any build metadata (e.g. +py36)
 # from the api_version before allowing the URL
@@ -274,91 +287,3 @@ def get_single_entry(
         ),
         included=included,
     )
-
-
-def mongo_id_for_database(database_id: str, database_type: str) -> str:
-    """Produce a MondoDB ObjectId for a database"""
-    from bson.objectid import ObjectId
-
-    oid = f"{database_id}{database_type}"
-    if len(oid) > 12:
-        oid = oid[:12]
-    elif len(oid) < 12:
-        oid = f"{oid}{'0' * (12 - len(oid))}"
-
-    return str(ObjectId(oid.encode("UTF-8")))
-
-
-def get_providers() -> list:
-    """Retrieve Materials-Consortia providers (from https://providers.optimade.org/v1/links).
-
-    Fallback order if providers.optimade.org is not available:
-
-    1. Try Materials-Consortia/providers on GitHub.
-    2. Try submodule `providers`' list of providers.
-    3. Log warning that providers list from Materials-Consortia is not included in the
-       `/links`-endpoint.
-
-    Returns:
-        List of raw JSON-decoded providers including MongoDB object IDs.
-
-    """
-    import requests
-
-    try:
-        import simplejson as json
-    except ImportError:
-        import json
-
-    provider_list_urls = [
-        "https://providers.optimade.org/v1/links",
-        "https://raw.githubusercontent.com/Materials-Consortia/providers"
-        "/master/src/links/v1/providers.json",
-    ]
-
-    for provider_list_url in provider_list_urls:
-        try:
-            providers = requests.get(provider_list_url).json()
-        except (
-            requests.exceptions.ConnectionError,
-            requests.exceptions.ConnectTimeout,
-            json.JSONDecodeError,
-        ):
-            pass
-        else:
-            break
-    else:
-        try:
-            from optimade.server.data import providers
-        except ImportError:
-            from optimade.server.logger import LOGGER
-
-            LOGGER.warning(
-                """Could not retrieve a list of providers!
-
-    Tried the following resources:
-
-{}
-    The list of providers will not be included in the `/links`-endpoint.
-""".format(
-                    "".join([f"    * {_}\n" for _ in provider_list_urls])
-                )
-            )
-            return []
-
-    providers_list = []
-    for provider in providers.get("data", []):
-        # Remove/skip "exmpl"
-        if provider["id"] == "exmpl":
-            continue
-
-        provider.update(provider.pop("attributes", {}))
-
-        # Add MongoDB ObjectId
-        provider["_id"] = {
-            "$oid": mongo_id_for_database(provider["id"], provider["type"])
-        }
-
-        providers_list.append(provider)
-
-    return providers_list

@@ -4,8 +4,6 @@ import os
 from pathlib import Path
 import sys
 
-from uvicorn.logging import DefaultFormatter
-
 
 # Instantiate LOGGER
 LOGGER = logging.getLogger("optimade")
@@ -25,9 +23,15 @@ try:
 except ImportError:
     CONSOLE_HANDLER.setLevel(os.getenv("OPTIMADE_LOG_LEVEL", "INFO").upper())
 
-# Formatter
-CONSOLE_FORMATTER = DefaultFormatter("%(levelprefix)s [%(name)s] %(message)s")
-CONSOLE_HANDLER.setFormatter(CONSOLE_FORMATTER)
+# Formatter; try to use uvicorn default, otherwise just use built-in default
+try:
+    from uvicorn.logging import DefaultFormatter
+
+    CONSOLE_FORMATTER = DefaultFormatter("%(levelprefix)s [%(name)s] %(message)s")
+    CONSOLE_HANDLER.setFormatter(CONSOLE_FORMATTER)
+except ImportError:
+    pass
+
 
 # Add handler to LOGGER
 LOGGER.addHandler(CONSOLE_HANDLER)
