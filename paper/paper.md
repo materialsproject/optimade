@@ -22,10 +22,10 @@ authors:
     affiliation: 4
   - name: Markus Scheidgen
     orcid: 0000-0002-8038-2277
-    affiliation: 5
+    affiliation: "5, 6"
   - name: Ádám Fekete
     orcid: 0000-0002-6263-897X
-    affiliation: "1, 6, 8"
+    affiliation: "1, 8, 9"
   - name: Donald Winston
     orcid: 0000-0002-8424-0604
     affiliation: "4, 7"
@@ -38,14 +38,16 @@ affiliations:
    index: 3
  - name: Lawrence Berkeley National Laboratory, Berkeley, CA, USA
    index: 4
- - name: FHI
+ - name: Fritz-Haber-Institut der Max-Planck-Gesellschaft, Faradayweg 4-6, 14195, Berlin, Germany
    index: 5
- - name: Namur
+ - name: Humboldt-Universität zu Berlin, Institut für Physik and IRIS Adlershof, 12489 Berlin, Germany
    index: 6
  - name: Polyneme LLC, New York, NY, USA
    index: 7
  - name: KCL
    index: 8
+ - name: Namur?
+   index: 9
 
 date: June 2021
 bibliography: paper.bib
