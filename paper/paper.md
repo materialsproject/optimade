@@ -105,7 +105,10 @@ The package is currently used in production by three major data providers for ma
 
 - The Materials Project [@MaterialsProject] uses `optimade-python-tools` alongside their existing API [@MAPI] and MongoDB database, providing access to highly-curated density-functional theory calculations across all known inorganic materials.
 `optimade-python-tools` handles filter parsing, database query generation and response validation by running the reference server implementation with minimal configuration.
-- The NoMaD Repository and Archive [@nomad] integrates the `optimade-python-tools` server in an existing web app and uses the Elasticsearch implementation of the filtering module to allow access to millions of published first-principles calculations submitted by users.
+- NOMAD [@nomad] uses the `optimade-python-tools` as a library to extend its existing web app with OPTIMADE API routes.
+ It uses the Elasticsearch implementation to filter millions of structures from published first-principles calculations provided by users and other projects.
+NOMAD also uses the filtering module in its own API to expose the OPTIMADE filter language in the user-centric web interface search bar.
+NOMAD uses a released version of `optimade-python-tools` and all necessary customization can be realized via configuration and sub-classing.
 - Materials Cloud [@MaterialsCloud] uses `optimade-python-tools` as a library to provide an OPTIMADE API entry to archived computational materials studies, created with the AiiDA [@AiiDA] Python framework and published through their archive.
 In this case, each individual study and archive entry has its own database and separate API entry.
 The Python classes within the `optimade` package have been extended to make use of AiiDA and its underlying PostgreSQL [@PostgreSQL] storage engine.
@@ -118,3 +121,4 @@ OPT can also be used in client code; one application that the OPTIMADE specifica
 M.E. would like to acknowledge the EPSRC Centre for Doctoral Training in Computational Methods for Materials Science for funding under grant number EP/L015552/1 and support from the European Union's Horizon 2020 research and innovation program under the European Union's Grant agreement No. 951786 (NOMAD CoE).
 C.W.A. acknowledges financial support by the MARKETPLACE project, which is funded by Horizon 2020 under H2020-NMBP-25-2017 call with Grant aggrement number: 760173 as well as the National Centres of Competence in Research (NCCR) Materials' revolution: Computational Design and Discovery of Novel Materials (MARVEL) created by the Swiss National Science Foundation (SNSF).
 S.D. acknowledges financial support by the U.S. Department of Energy, Office of Science, Office of Basic Energy Sciences, Materials Sciences and Engineering Division under Contract No. DE-AC02-05-CH11231 (Materials Project program KC23MP).
+M.S. acknowledges support from the European Union's Horizon 2020 research and innovation program under the European Union's Grant agreement No. 676580 (NoMaD) and No. 951786 (NOMAD CoE) as well as financial support from the Max Planck research network on big-data-driven materials science (BiGmax).
