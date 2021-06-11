@@ -76,25 +76,21 @@ In order to accommodate existing materials database APIs, the OPTIMADE API speci
 However, this flexibility could be daunting to database providers, likely acting to increase the barrier to hosting an OPTIMADE REST API.
 `optimade-python-tools` aims to catalyse the creation of APIs from existing and new data sources by providing a configurable and modular reference server implementation for hosting materials data in an OPTIMADE-compliant way.
 The repository hosts the `optimade` Python package, which leverages the modern Python libraries pydantic [@pydantic] and FastAPI [@FastAPI] to specify the data models and API routes defined in the OPTIMADE API specification, additionally providing a schema following the OpenAPI format [@OpenAPI].
-Two storage back-ends are supported out of the box, with full filter support for databases that employ the popular MongoDB [@MongoDB] or Elasticsearch [@Elasticsearch] frameworks.
+Two storage back-ends are supported out of the box, with full filter support for databases that employ the popular [MongoDB](https://www.mongodb.com) or [Elasticsearch](https://elastic.co) frameworks.
 
 # Functionality
 
 The modular functionality of `optimade` can be broken down by the different stages of a user query to the reference server.
-Consider the following query URL to an OPTIMADE API:
+Consider the following query URL to an OPTIMADE API, which should filter for any crystal structures in the database with a composition that consists of any three elements in a 1:1:1 ratio:
 
 ```
-https://optimade.example.org/v1/structures?filter=chemical_formula_anonymous="ABC"
+https://example.org/v1/structures?filter=chemical_formula_anonymous="ABC"
 ```
 
-This query should match any crystal structures in the database with a composition that consists of any three elements in a 1:1:1 ratio. The "anatomy" of this query is displayed in Figure \ref{fig:query}.
-
-1. After routing the query to the appropriate `/structures/` endpoint adhering to version `v1` of the specification, the filter string `chemical_formula_anonymous="ABC"` is tokenized and parsed into an abstract tree by a `FilterParser` object using the Lark parsing library [@Lark] against the Extended Backus-Naur Form (EBNF) grammar, defined by the specification.
+1. After routing the query to the appropriate `/structures/` endpoint adhering to version `v1` of the specification, the filter string `chemical_formula_anonymous="ABC"` is tokenized and parsed into an abstract tree by a `FilterParser` object using the Lark parsing library [@Lark] against the formal grammar defined by the specification.
 2. The abstract tree is then transformed by a `FilterTransformer` object into a database query specific to the configured back-end for the server.
 This transformation can include aliasing and custom transformations such that the underlying database format can be accommodated.
-3. The results from the database query are then deserialized by `EntryResourceMapper` objects into the OPTIMADE-defined data models and finally re-serialized into JSON before being served to the user over HTTP.
-
-![Anatomy of an OPTIMADE query handled by the package.\label{fig:query}](./query.pdf)
+3. The results from the database query are then de-serialized by `EntryResourceMapper` objects into the OPTIMADE-defined data models and finally re-serialized into JSON before being served to the user over HTTP.
 
 Beyond this query functionality, the package also provides:
 
@@ -113,7 +109,7 @@ NOMAD also uses the filtering module in its own API to expose the OPTIMADE filte
 NOMAD uses a released version of `optimade-python-tools` and all necessary customization can be realized via configuration and sub-classing.
 - Materials Cloud [@MaterialsCloud] uses `optimade-python-tools` as a library to provide an OPTIMADE API entry to archived computational materials studies, created with the AiiDA [@AiiDA] Python framework and published through their archive.
 In this case, each individual study and archive entry has its own database and separate API entry.
-The Python classes within the `optimade` package have been extended to make use of AiiDA and its underlying PostgreSQL [@PostgreSQL] storage engine.
+The Python classes within the `optimade` package have been extended to make use of AiiDA and its underlying [PostgreSQL](https://postgresql.org) storage engine.
 
 <!-- Could also mention clients/gateway/consortia infrastructure like the dashboard here?
 OPT can also be used in client code; one application that the OPTIMADE specification enables is cross-origin queries. The-->
@@ -121,6 +117,6 @@ OPT can also be used in client code; one application that the OPTIMADE specifica
 # Acknowledgements
 
 M.E. would like to acknowledge the EPSRC Centre for Doctoral Training in Computational Methods for Materials Science for funding under grant number EP/L015552/1 and support from the European Union's Horizon 2020 research and innovation program under the European Union's Grant agreement No. 951786 (NOMAD CoE).
-C.W.A. acknowledges financial support by the MARKETPLACE project, which is funded by Horizon 2020 under H2020-NMBP-25-2017 call with Grant aggrement number: 760173 as well as the National Centres of Competence in Research (NCCR) Materials' revolution: Computational Design and Discovery of Novel Materials (MARVEL) created by the Swiss National Science Foundation (SNSF).
+C.W.A. acknowledges financial support by the MARKETPLACE project, which is funded by Horizon 2020 under H2020-NMBP-25-2017 call with Grant agreement number: 760173 as well as the National Centres of Competence in Research (NCCR) Materials' revolution: Computational Design and Discovery of Novel Materials (MARVEL) created by the Swiss National Science Foundation (SNSF).
 S.D. acknowledges financial support by the U.S. Department of Energy, Office of Science, Office of Basic Energy Sciences, Materials Sciences and Engineering Division under Contract No. DE-AC02-05-CH11231 (Materials Project program KC23MP).
 M.S. acknowledges support from the European Union's Horizon 2020 research and innovation program under the European Union's Grant agreement No. 676580 (NoMaD) and No. 951786 (NOMAD CoE) as well as financial support from the Max Planck research network on big-data-driven materials science (BiGmax).
