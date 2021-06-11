@@ -425,13 +425,6 @@ def test_filter_on_relationships(check_response, check_error_response):
     )
 
 
-@pytest.mark.xfail(
-    CONFIG.database_backend == SupportedBackend.MONGOMOCK,
-    reason=(
-        "mongomock<=3.22.1 has a bug that causes {'$size': 1} queries on missing fields to match all documents: "
-        "(https://github.com/mongomock/mongomock/issues/710). This check can be removed once mongomock 3.22.2 has been released."
-    ),
-)
 def test_filter_on_unknown_fields(check_response, check_error_response):
 
     request = "/structures?filter=unknown_field = 1"

@@ -271,6 +271,7 @@ class StructureResourceAttributes(EntryResourceAttributes):
     - **Query**: MUST be a queryable property with support for all mandatory filter features.
     - The strings are the chemical symbols, i.e., either a single uppercase letter or an uppercase letter followed by a number of lowercase letters.
     - The order MUST be alphabetical.
+    - MUST refer to the same elements in the same order, and therefore be of the same length, as `elements_ratios`, if the latter is provided.
     - Note: This property SHOULD NOT contain the string "X" to indicate non-chemical elements or "vacancy" to indicate vacancies (in contrast to the field `chemical_symbols` for the `species` property).
 
 - **Examples**:
@@ -279,7 +280,8 @@ class StructureResourceAttributes(EntryResourceAttributes):
 
 - **Query examples**:
     - A filter that matches all records of structures that contain Si, Al **and** O, and possibly other elements: `elements HAS ALL "Si", "Al", "O"`.
-    - To match structures with exactly these three elements, use `elements HAS ALL "Si", "Al", "O" AND elements LENGTH 3`.""",
+    - To match structures with exactly these three elements, use `elements HAS ALL "Si", "Al", "O" AND elements LENGTH 3`.
+    - Note: length queries on this property can be equivalently formulated by filtering on the `nelements`_ property directly.""",
         support=SupportLevel.SHOULD,
         queryable=SupportLevel.MUST,
     )
@@ -293,6 +295,7 @@ class StructureResourceAttributes(EntryResourceAttributes):
 - **Requirements/Conventions**:
     - **Support**: SHOULD be supported by all implementations, i.e., SHOULD NOT be `null`.
     - **Query**: MUST be a queryable property with support for all mandatory filter features.
+    - MUST be equal to the lengths of the list properties `elements` and `elements_ratios`, if they are provided.
 
 - **Examples**:
     - `3`
@@ -316,6 +319,7 @@ class StructureResourceAttributes(EntryResourceAttributes):
     - **Query**: MUST be a queryable property with support for all mandatory filter features.
     - Composed by the proportions of elements in the structure as a list of floating point numbers.
     - The sum of the numbers MUST be 1.0 (within floating point accuracy)
+    - MUST refer to the same elements in the same order, and therefore be of the same length, as `elements`, if the latter is provided.
 
 - **Examples**:
     - `[1.0]`
@@ -720,7 +724,7 @@ The properties of the species are found in the property `species`.
                 { "name": "Si", "chemical_symbols": ["Si"], "concentration": [1.0] },
                 { "name": "Ge", "chemical_symbols": ["Ge"], "concentration": [1.0] },
                 { "name": "vac", "chemical_symbols": ["vacancy"], "concentration": [1.0] }
-              },
+              ],
               "assemblies": [
                 {
               "sites_in_groups": [ [0], [1], [2] ],

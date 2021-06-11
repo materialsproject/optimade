@@ -1,8 +1,19 @@
-from optimade.models import DataType, StructureResource, ReferenceResource
+from optimade.models import (
+    DataType,
+    ErrorResponse,
+    StructureResource,
+    ReferenceResource,
+)
+from optimade.server.exceptions import POSSIBLE_ERRORS
 
 ENTRY_INFO_SCHEMAS = {
     "structures": StructureResource.schema,
     "references": ReferenceResource.schema,
+}
+
+ERROR_RESPONSES = {
+    err.status_code: {"model": ErrorResponse, "description": err.title}
+    for err in POSSIBLE_ERRORS
 }
 
 

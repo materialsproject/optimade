@@ -1,21 +1,16 @@
-from typing import Union
-
 from fastapi import APIRouter, Request
 
 from optimade import __api_version__
-
 from optimade.models import (
-    ErrorResponse,
     IndexInfoResponse,
     IndexInfoAttributes,
     IndexInfoResource,
     IndexRelationship,
     RelatedLinksResource,
 )
-
 from optimade.server.config import CONFIG
-
 from optimade.server.routers.utils import meta_values, get_base_url
+from optimade.server.schemas import ERROR_RESPONSES
 
 
 router = APIRouter(redirect_slashes=True)
@@ -23,11 +18,12 @@ router = APIRouter(redirect_slashes=True)
 
 @router.get(
     "/info",
-    response_model=Union[IndexInfoResponse, ErrorResponse],
+    response_model=IndexInfoResponse,
     response_model_exclude_unset=True,
     tags=["Info"],
+    responses=ERROR_RESPONSES,
 )
-def get_info(request: Request):
+def get_info(request: Request) -> IndexInfoResponse:
     return IndexInfoResponse(
         meta=meta_values(request.url, 1, 1, more_data_available=False),
         data=IndexInfoResource(

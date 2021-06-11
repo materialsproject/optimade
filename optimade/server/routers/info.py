@@ -1,20 +1,13 @@
-from typing import Union
-
 from fastapi import APIRouter, Request
 from fastapi.exceptions import StarletteHTTPException
 
 from optimade import __api_version__
-
-from optimade.models import (
-    ErrorResponse,
-    InfoResponse,
-    EntryInfoResponse,
-)
-from optimade.server.schemas import ENTRY_INFO_SCHEMAS, retrieve_queryable_properties
-
-from optimade.server.routers.utils import (
-    meta_values,
-    get_base_url,
+from optimade.models import InfoResponse, EntryInfoResponse
+from optimade.server.routers.utils import meta_values, get_base_url
+from optimade.server.schemas import (
+    ENTRY_INFO_SCHEMAS,
+    ERROR_RESPONSES,
+    retrieve_queryable_properties,
 )
 
 
@@ -23,11 +16,12 @@ router = APIRouter(redirect_slashes=True)
 
 @router.get(
     "/info",
-    response_model=Union[InfoResponse, ErrorResponse],
+    response_model=InfoResponse,
     response_model_exclude_unset=True,
     tags=["Info"],
+    responses=ERROR_RESPONSES,
 )
-def get_info(request: Request):
+def get_info(request: Request) -> InfoResponse:
     from optimade.models import BaseInfoResource, BaseInfoAttributes
 
     return InfoResponse(
@@ -54,11 +48,12 @@ def get_info(request: Request):
 
 @router.get(
     "/info/{entry}",
-    response_model=Union[EntryInfoResponse, ErrorResponse],
+    response_model=EntryInfoResponse,
     response_model_exclude_unset=True,
     tags=["Info"],
+    responses=ERROR_RESPONSES,
 )
-def get_entry_info(request: Request, entry: str):
+def get_entry_info(request: Request, entry: str) -> EntryInfoResponse:
     from optimade.models import EntryInfoResource
 
     valid_entry_info_endpoints = ENTRY_INFO_SCHEMAS.keys()

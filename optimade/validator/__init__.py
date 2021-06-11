@@ -10,6 +10,7 @@ def validate():  # pragma: no cover
     import sys
     import os
     import traceback
+    import json
 
     parser = argparse.ArgumentParser(
         prog="optimade-validator",
@@ -90,6 +91,12 @@ def validate():  # pragma: no cover
         help="Alter the requested page limit for some tests.",
     )
 
+    parser.add_argument(
+        "--headers",
+        type=json.loads,
+        help="Additional HTTP headers to use for each request, specified as a JSON object.",
+    )
+
     args = vars(parser.parse_args())
 
     if os.environ.get("OPTIMADE_VERBOSITY") is not None:
@@ -121,6 +128,7 @@ def validate():  # pragma: no cover
         fail_fast=args["fail_fast"],
         minimal=args["minimal"],
         page_limit=args["page_limit"],
+        http_headers=args["headers"],
     )
 
     try:

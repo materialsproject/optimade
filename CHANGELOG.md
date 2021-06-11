@@ -1,12 +1,41 @@
 # Changelog
 
-## [Unreleased](https://github.com/Materials-Consortia/optimade-python-tools/tree/HEAD)
+## [v0.15.3](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.15.3) (2021-06-10)
 
-[Full Changelog](https://github.com/Materials-Consortia/optimade-python-tools/compare/v0.15.0...HEAD)
+[Full Changelog](https://github.com/Materials-Consortia/optimade-python-tools/compare/v0.15.2...v0.15.3)
+
+**Merged pull requests:**
+
+- Update model descriptions following spec updates [\#847](https://github.com/Materials-Consortia/optimade-python-tools/pull/847) ([ml-evs](https://github.com/ml-evs))
+
+## [v0.15.2](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.15.2) (2021-06-10)
+
+[Full Changelog](https://github.com/Materials-Consortia/optimade-python-tools/compare/v0.15.1...v0.15.2)
+
+**Implemented enhancements:**
+
+- Missing HTTP response codes in OpenAPI schema [\#763](https://github.com/Materials-Consortia/optimade-python-tools/issues/763)
+
+**Merged pull requests:**
+
+- Update response model information for routes [\#846](https://github.com/Materials-Consortia/optimade-python-tools/pull/846) ([CasperWA](https://github.com/CasperWA))
+- Improve semver validation error messsage [\#845](https://github.com/Materials-Consortia/optimade-python-tools/pull/845) ([ml-evs](https://github.com/ml-evs))
+- Bump codecov/codecov-action from 1.5.0 to 1.5.2 [\#843](https://github.com/Materials-Consortia/optimade-python-tools/pull/843) ([dependabot[bot]](https://github.com/apps/dependabot))
+
+## [v0.15.1](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.15.1) (2021-06-08)
+
+[Full Changelog](https://github.com/Materials-Consortia/optimade-python-tools/compare/v0.15.0...v0.15.1)
 
 **Closed issues:**
 
-- CI triggered by PRs does not test dep versions in setup.py [\#834](https://github.com/Materials-Consortia/optimade-python-tools/issues/834)
+- mongomock $size queries match all non-array fields for {$size: 1}, even nulls [\#807](https://github.com/Materials-Consortia/optimade-python-tools/issues/807)
+- Allow custom headers to be specified for validation [\#790](https://github.com/Materials-Consortia/optimade-python-tools/issues/790)
+
+**Merged pull requests:**
+
+- Allow both Jinja2 v2 and v3 [\#838](https://github.com/Materials-Consortia/optimade-python-tools/pull/838) ([CasperWA](https://github.com/CasperWA))
+- Update mongomock and remove test skip [\#836](https://github.com/Materials-Consortia/optimade-python-tools/pull/836) ([ml-evs](https://github.com/ml-evs))
+- Add --headers argument to validator to allow passing e.g. API keys [\#806](https://github.com/Materials-Consortia/optimade-python-tools/pull/806) ([ml-evs](https://github.com/ml-evs))
 
 ## [v0.15.0](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.15.0) (2021-06-01)
 
@@ -21,6 +50,7 @@
 
 **Closed issues:**
 
+- CI triggered by PRs does not test dep versions in setup.py [\#834](https://github.com/Materials-Consortia/optimade-python-tools/issues/834)
 - Remove Django support for v0.15+ [\#832](https://github.com/Materials-Consortia/optimade-python-tools/issues/832)
 - Move aliasing code to base transformer [\#743](https://github.com/Materials-Consortia/optimade-python-tools/issues/743)
 - Missing optional fields are not returned as null when requested with response\_fields [\#516](https://github.com/Materials-Consortia/optimade-python-tools/issues/516)

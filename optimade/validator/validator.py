@@ -75,6 +75,7 @@ class ImplementationValidator:
         as_type: str = None,
         index: bool = False,
         minimal: bool = False,
+        http_headers: Dict[str, str] = None,
     ):
         """Set up the tests to run, based on constants in this module
         for required endpoints.
@@ -102,6 +103,7 @@ class ImplementationValidator:
                 to be pointed to the corresponding endpoint.
             index: Whether to validate the implementation as an index meta-database.
             minimal: Whether or not to run only a minimal test set.
+            http_headers: Dictionary of additional headers to add to every request.
 
         """
         self.verbosity = verbosity
@@ -135,11 +137,22 @@ class ImplementationValidator:
         if client:
             self.client = client
             self.base_url = self.client.base_url
+            # If a custom client has been provided, try to set custom headers if they have been specified,
+            # but do not overwrite any existing attributes
+            if http_headers:
+                if not hasattr(self.client, "headers"):
+                    self.client.headers = http_headers
+                else:
+                    print_warning(
+                        f"Not using specified request headers {http_headers} with custom client {self.client}."
+                    )
         else:
             while base_url.endswith("/"):
                 base_url = base_url[:-1]
             self.base_url = base_url
-            self.client = Client(base_url, max_retries=self.max_retries)
+            self.client = Client(
+                base_url, max_retries=self.max_retries, headers=http_headers
+            )
 
         self._setup_log()
 

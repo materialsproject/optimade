@@ -161,7 +161,9 @@ class ValidatorResults:
 
 
 class Client:  # pragma: no cover
-    def __init__(self, base_url: str, max_retries=5):
+    def __init__(
+        self, base_url: str, max_retries: int = 5, headers: Dict[str, str] = None
+    ) -> None:
         """Initialises the Client with the given `base_url` without testing
         if it is valid.
 
@@ -171,16 +173,20 @@ class Client:  # pragma: no cover
 
                 Examples:
 
-                    - `'http://example.org/optimade/v1'`,
-                    - `'www.crystallography.net/cod-test/optimade/v0.10.0/'`
+                - `'http://example.org/optimade/v1'`,
+                - `'www.crystallography.net/cod-test/optimade/v0.10.0/'`
 
                 Note: A maximum of one slash ("/") is allowed as the last character.
+
+            max_retries: The maximum number of attempts to make for each query.
+            headers: Dictionary of additional headers to add to every request.
 
         """
         self.base_url = base_url
         self.last_request = None
         self.response = None
         self.max_retries = max_retries
+        self.headers = headers or {}
 
     def get(self, request: str):
         """Makes the given request, with a number of retries if being rate limited. The
@@ -212,7 +218,7 @@ class Client:  # pragma: no cover
         while retries < self.max_retries:
             retries += 1
             try:
-                self.response = requests.get(self.last_request)
+                self.response = requests.get(self.last_request, headers=self.headers)
             except requests.exceptions.ConnectionError as exc:
                 sys.exit(
                     f"{exc.__class__.__name__}: No response from server at {self.last_request}, please check the URL."

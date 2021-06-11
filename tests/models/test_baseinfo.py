@@ -15,6 +15,8 @@ def test_available_api_versions():
     ]
     bad_versions = [
         {"url": "https://example.com/v0", "version": "v0.1.9"},
+        {"url": "https://example.com/v0", "version": "0.1"},
+        {"url": "https://example.com/v1", "version": "1.0"},
         {"url": "https://example.com/v1.0.2", "version": "v1.0.2"},
         {"url": "https://example.com/optimade/v1.2", "version": "v1.2.3"},
         {"url": "https://example.com/v1.0.0", "version": "1.asdfaf.0-rc55"},
@@ -48,7 +50,8 @@ def test_available_api_versions():
         with pytest.raises(ValueError) as exc:
             AvailableApiVersion(**data)
         assert (
-            f"Unable to validate version {data['version']} as a semver" in exc.exconly()
+            f"Unable to validate the version string {data['version']!r} as a semantic version (expected <major>.<minor>.<patch>)"
+            in exc.exconly()
         ), f"SemVer validator not triggered as it should.\nException message: {exc.exconly()}.\nInputs: {data}"
 
     for data in bad_combos:
