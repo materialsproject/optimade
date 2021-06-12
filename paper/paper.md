@@ -55,12 +55,6 @@ bibliography: paper.bib
 
 # Summary
 
-<!--Follow similar spiel to OPTIMADE paper:-->
-<!--- advent of high-throughput computing, software and theory maturity, availability of compute power have lead to explosion of computational data.-->
-<!--- can be directly compared to high-quality measurements of crystal structures curated over many years-->
-<!--- this data is increasingly being made available via public APIs, such as...-->
-<!--- The OPTIMADE API specification was created to enable interoperability and machine-actionable APIs from multiple data providers-->
-
 In recent decades, improvements in algorithms, hardware, and theory have enabled crystalline materials to be studied computationally at the atomistic level with great accuracy and speed.
 To enable dissemination, reproducibility, and reuse, many digital crystal structure databases have been created and curated, ready for comparison with existing infrastructure that stores structural characterizations (e.g., diffraction) of real crystals.
 These databases have been made available with bespoke application programming interfaces (APIs) to allow for automated and often open access to the underlying data.
@@ -110,9 +104,6 @@ NOMAD uses a released version of `optimade-python-tools` and all necessary custo
 - Materials Cloud [@MaterialsCloud] uses `optimade-python-tools` as a library to provide an OPTIMADE API entry to archived computational materials studies, created with the AiiDA [@AiiDA] Python framework and published through their archive.
 In this case, each individual study and archive entry has its own database and separate API entry.
 The Python classes within the `optimade` package have been extended to make use of AiiDA and its underlying [PostgreSQL](https://postgresql.org) storage engine.
-
-<!-- Could also mention clients/gateway/consortia infrastructure like the dashboard here?
-OPT can also be used in client code; one application that the OPTIMADE specification enables is cross-origin queries. The-->
 
 # Acknowledgements
 
