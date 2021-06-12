@@ -60,7 +60,7 @@ To enable dissemination, reproducibility, and reuse, many digital crystal struct
 These databases have been made available with bespoke application programming interfaces (APIs) to allow for automated and often open access to the underlying data.
 Such esoteric and specialized APIs incur maintenance and usability costs upon both the data providers and consumers, who may not be software specialists.
 
-The OPTIMADE API specification [@andersen2021optimade; @OPTIMADE_spec], released in July 2020, aimed to reduce these costs by designing a common API for use across a consortium of collaborating materials databases and beyond.
+The [OPTIMADE API](https://optimade.org) specification [@andersen2021optimade; @OPTIMADE_spec], released in July 2020, aimed to reduce these costs by designing a common API for use across a consortium of collaborating materials databases and beyond.
 Whilst based on the robust JSON:API standard [@JSONAPI], the OPTIMADE API specification presents several domain-specific features and requirements that can be tricky to implement for non-specialist teams.
 The repository presented here, `optimade-python-tools`, provides a modular reference server implementation and a set of associated tools to accelerate the development process for data providers, toolmakers and end-users.
 
@@ -89,7 +89,7 @@ This transformation can include aliasing and custom transformations such that th
 Beyond this query functionality, the package also provides:
 
 - A fuzzy implementation validator that performs HTTP queries against remote or local OPTIMADE APIs, with test queries and expected responses generated dynamically based on the data served at the introspective `/info/` endpoint of the API implementation.
-- Entry "adapters" that can convert between OPTIMADE-compliant entries and the data models of popular Python libraries used widely in the materials science community: `pymatgen` [@pymatgen], `ase` (the Atomic Simulation Environment) [@ASE], AiiDA [@AiiDA], and JARVIS [@JARVIS].
+- Entry "adapters" that can convert between OPTIMADE-compliant entries and the data models of popular Python libraries used widely in the materials science community: `pymatgen` [@pymatgen], ASE [@ASE], AiiDA [@AiiDA], and JARVIS [@JARVIS].
 
 # Use cases
 
@@ -97,7 +97,7 @@ The package is currently used in production by three major data providers for ma
 
 - The Materials Project [@MaterialsProject] uses `optimade-python-tools` alongside their existing API [@MAPI] and MongoDB database, providing access to highly-curated density-functional theory calculations across all known inorganic materials.
 `optimade-python-tools` handles filter parsing, database query generation and response validation by running the reference server implementation with minimal configuration.
-- NOMAD [@nomad] uses the `optimade-python-tools` as a library to extend its existing web app with OPTIMADE API routes.
+- NOMAD [@nomad] uses `optimade-python-tools` as a library to extend its existing web app with OPTIMADE API routes.
  It uses the Elasticsearch implementation to filter millions of structures from published first-principles calculations provided by users and other projects.
 NOMAD also uses the filtering module in its own API to expose the OPTIMADE filter language in the user-centric web interface search bar.
 NOMAD uses a released version of `optimade-python-tools` and all necessary customization can be realized via configuration and sub-classing.
@@ -107,6 +107,7 @@ The Python classes within the `optimade` package have been extended to make use 
 
 # Acknowledgements
 
+All authors acknowledge contributions and feedback from other members of the OPTIMADE consortium, with special thanks to Michael Wu, Leopold Talirz, Thomas Purcell, Abhijith Gopakumar, Andrius Merkys and Fawzi Mohamed for their direct contributions to the `optimade` package.
 M.E. would like to acknowledge the EPSRC Centre for Doctoral Training in Computational Methods for Materials Science for funding under grant number EP/L015552/1 and support from the European Union's Horizon 2020 research and innovation program under the European Union's Grant agreement No. 951786 (NOMAD CoE).
 C.W.A. acknowledges financial support by the MARKETPLACE project, which is funded by Horizon 2020 under H2020-NMBP-25-2017 call with Grant agreement number: 760173 as well as the National Centres of Competence in Research (NCCR) Materials' revolution: Computational Design and Discovery of Novel Materials (MARVEL) created by the Swiss National Science Foundation (SNSF).
 S.D. acknowledges financial support by the U.S. Department of Energy, Office of Science, Office of Basic Energy Sciences, Materials Sciences and Engineering Division under Contract No. DE-AC02-05-CH11231 (Materials Project program KC23MP).
