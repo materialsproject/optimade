@@ -44,9 +44,9 @@ affiliations:
    index: 6
  - name: Polyneme LLC, New York, NY, USA
    index: 7
- - name: KCL
+ - name: Department of Physics, King's College London, Strand, London WC2R 2LS, United Kingdom
    index: 8
- - name: Namur?
+ - name: Department of Physics and Namur Institute of Structured Materials, University of Namur, Rue de Bruxelles 51, 5000 Namur, Belgium
    index: 9
 
 date: June 2021
