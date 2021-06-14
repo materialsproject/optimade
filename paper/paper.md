@@ -1,5 +1,5 @@
 ---
-title: '`optimade-python-tools`: a Python library for implementing and consuming materials data via OPTIMADE APIs'
+title: '`optimade-python-tools`: a Python library for serving and consuming materials data via OPTIMADE APIs'
 tags:
   - Python
   - REST API
