@@ -5,6 +5,7 @@
     "implementation": {
         "name": "Example implementation",
         "source_url": "https://github.com/Materials-Consortia/optimade-python-tools",
+        "issue_tracker": "https://github.com/Materials-Consortia/optimade-python-tools/issues",
         "maintainer": {"email": "dev@optimade.org"}
     },
     "provider": {
