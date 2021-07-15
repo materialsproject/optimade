@@ -2,7 +2,7 @@
   "openapi": "3.0.2",
   "info": {
     "title": "OPTIMADE API - Index meta-database",
-    "description": "The [Open Databases Integration for Materials Design (OPTIMADE) consortium](https://www.optimade.org/) aims to make materials databases interoperational by developing a common REST API.\nThis is the \"special\" index meta-database.\n\nThis specification is generated using [`optimade-python-tools`](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.16.0) v0.16.0.",
+    "description": "The [Open Databases Integration for Materials Design (OPTIMADE) consortium](https://www.optimade.org/) aims to make materials databases interoperational by developing a common REST API.\nThis is the \"special\" index meta-database.\n\nThis specification is generated using [`optimade-python-tools`](https://github.com/Materials-Consortia/optimade-python-tools/tree/v0.16.1) v0.16.1.",
     "version": "1.1.0"
   },
   "paths": {
@@ -17,7 +17,7 @@
           "200": {
             "description": "Successful Response",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/IndexInfoResponse"
                 }
@@ -27,7 +27,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -37,7 +37,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -47,7 +47,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -57,7 +57,7 @@
           "422": {
             "description": "Unprocessable Entity",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -67,7 +67,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -77,7 +77,7 @@
           "501": {
             "description": "Not Implemented",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -87,7 +87,7 @@
           "553": {
             "description": "Version Not Supported",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -276,7 +276,7 @@
           "200": {
             "description": "Successful Response",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/LinksResponse"
                 }
@@ -286,7 +286,7 @@
           "400": {
             "description": "Bad Request",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -296,7 +296,7 @@
           "403": {
             "description": "Forbidden",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -306,7 +306,7 @@
           "404": {
             "description": "Not Found",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -316,7 +316,7 @@
           "422": {
             "description": "Unprocessable Entity",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -326,7 +326,7 @@
           "500": {
             "description": "Internal Server Error",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -336,7 +336,7 @@
           "501": {
             "description": "Not Implemented",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
@@ -346,7 +346,7 @@
           "553": {
             "description": "Version Not Supported",
             "content": {
-              "application/json": {
+              "application/vnd.api+json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
                 }
