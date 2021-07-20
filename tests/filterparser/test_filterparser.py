@@ -1,5 +1,7 @@
 import os
+import abc
 from glob import glob
+from typing import Tuple
 
 import pytest
 
@@ -11,29 +13,45 @@ from optimade.server.exceptions import BadRequest
 testfile_dir = os.path.join(os.path.dirname(__file__), "testfiles")
 
 
-class TestParserV0_9_5:
+class BaseTestFilterParser(abc.ABC):
+
+    version: Tuple[int, int, int]
+    variant: str = "default"
+
+    def parse(self, inp):
+        return self.parser.parse(inp)
+
     @pytest.fixture(autouse=True)
     def set_up(self):
         self.test_filters = []
+        self.test_outputs = []
         for fn in sorted(glob(os.path.join(testfile_dir, "*.inp"))):
             with open(fn) as f:
                 self.test_filters.append(f.read().strip())
-        self.parser = LarkParser(version=(0, 9, 5))
+
+        for fn in sorted(glob(os.path.join(testfile_dir, "*.out"))):
+            with open(fn) as f:
+                self.test_outputs.append("\n".join(f.readlines()))
+        self.parser = LarkParser(version=self.version, variant=self.variant)
 
     def test_inputs(self):
-        for tf in self.test_filters:
-            if tf == "filter=number=0.0.1":
-                with pytest.raises(BadRequest):
-                    self.parser.parse(tf)
+        for ind, tf in enumerate(self.test_filters):
+            raised = None
+            tree = None
+            try:
+                tree = self.parse(tf)
+            except Exception as exc:
+                raised = exc
+
+            if "Error" in self.test_outputs[ind]:
+                assert raised, f"Filter {tf} did not raise the expected error."
             else:
-                tree = self.parser.parse(tf)
-                assert isinstance(tree, Tree)
+                assert isinstance(tree, Tree), (tf, ind + 1, raised)
+                assert not raised
 
     def test_parser_version(self):
-        v = (0, 9, 5)
-        p = LarkParser(version=v)
-        assert isinstance(p.parse(self.test_filters[0]), Tree)
-        assert p.version == v
+        assert self.parser.version == self.version
+        assert self.parser.variant == self.variant
 
     def test_repr(self):
         assert repr(self.parser) is not None
@@ -41,16 +59,10 @@ class TestParserV0_9_5:
         assert repr(self.parser) is not None
 
 
-class TestParserV1_0_0:
+class TestParserV1_0_0(BaseTestFilterParser):
+
     version = (1, 0, 0)
     variant = "default"
-
-    @pytest.fixture(autouse=True)
-    def set_up(self):
-        self.parser = LarkParser(version=self.version, variant=self.variant)
-
-    def parse(self, inp):
-        return self.parser.parse(inp)
 
     def test_empty(self):
         assert isinstance(self.parse(" "), Tree)
@@ -276,11 +288,28 @@ class TestParserV1_0_0:
         with pytest.raises(BadRequest):
             self.parse("NOTICE=val")  # not valid property or value (NOTICE)
 
-    def test_parser_version(self):
-        assert self.parser.version == self.version
-        assert self.parser.variant == self.variant
 
-    def test_repr(self):
-        assert repr(self.parser) is not None
-        self.parser.parse('key="value"')
-        assert repr(self.parser) is not None
+class TestParserV1_2_0(TestParserV1_0_0):
+    version = (1, 2, 0)
+    variant = "develop"
+
+    def test_boolean_values(self):
+        assert isinstance(
+            self.parse("_exmpl_element_counts = TRUE"),
+            Tree,
+        )
+
+        assert isinstance(
+            self.parse("_exmpl_element_counts = FALSE"),
+            Tree,
+        )
+
+        assert isinstance(
+            self.parse("_exmpl_element_counts != FALSE"),
+            Tree,
+        )
+
+        assert isinstance(
+            self.parse("NOT _exmpl_element_counts = TRUE"),
+            Tree,
+        )
