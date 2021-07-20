@@ -13,7 +13,7 @@ from optimade.filtertransformers.elasticsearch import (
 
 @pytest.fixture
 def parser():
-    return LarkParser(version=(0, 10, 1))
+    return LarkParser()
 
 
 @pytest.fixture
