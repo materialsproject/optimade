@@ -1,0 +1,1 @@
+elements LENGTH = 42 AND elements LENGTH > 42 AND elements LENGTH < 42 AND elements LENGTH != 42 AND elements LENGTH >= 42 AND elements LENGTH <= 42

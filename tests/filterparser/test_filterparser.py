@@ -18,22 +18,36 @@ class BaseTestFilterParser(abc.ABC):
     version: Tuple[int, int, int]
     variant: str = "default"
 
+    def parse(self, inp):
+        return self.parser.parse(inp)
+
     @pytest.fixture(autouse=True)
     def set_up(self):
         self.test_filters = []
+        self.test_outputs = []
         for fn in sorted(glob(os.path.join(testfile_dir, "*.inp"))):
             with open(fn) as f:
                 self.test_filters.append(f.read().strip())
+
+        for fn in sorted(glob(os.path.join(testfile_dir, "*.out"))):
+            with open(fn) as f:
+                self.test_outputs.append("\n".join(f.readlines()))
         self.parser = LarkParser(version=self.version, variant=self.variant)
 
     def test_inputs(self):
-        for tf in self.test_filters:
-            if tf == "filter=number=0.0.1":
-                with pytest.raises(BadRequest):
-                    self.parser.parse(tf)
+        for ind, tf in enumerate(self.test_filters):
+            raised = None
+            tree = None
+            try:
+                tree = self.parse(tf)
+            except Exception as exc:
+                raised = exc
+
+            if "Error" in self.test_outputs[ind]:
+                assert raised, f"Filter {tf} did not raise the expected error."
             else:
-                tree = self.parser.parse(tf)
-                assert isinstance(tree, Tree)
+                assert isinstance(tree, Tree), (tf, ind + 1, raised)
+                assert not raised
 
     def test_parser_version(self):
         assert self.parser.version == self.version
@@ -49,9 +63,6 @@ class TestParserV1_0_0(BaseTestFilterParser):
 
     version = (1, 0, 0)
     variant = "default"
-
-    def parse(self, inp):
-        return self.parser.parse(inp)
 
     def test_empty(self):
         assert isinstance(self.parse(" "), Tree)

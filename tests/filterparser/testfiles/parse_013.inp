@@ -1,1 +1,0 @@
-filter= a = 12345 AND b = +12 AND c = -34 AND d = 1.2 AND e = .2E7 AND f = -.2E+7 AND g = +10.01E-10 AND h = 6.03e23 AND i = .1E1 AND j = -.1e1 AND k = 1.e-12 AND l = -.1e-12 AND m = 1000000000.E1000000000
