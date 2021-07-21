@@ -79,6 +79,7 @@ class ValidatorResults:
 
     success_count: int = 0
     failure_count: int = 0
+    warning_count: int = 0
     internal_failure_count: int = 0
     optional_success_count: int = 0
     optional_failure_count: int = 0
@@ -89,6 +90,7 @@ class ValidatorResults:
     optional_failure_messages: List[Tuple[str, str]] = dataclasses.field(
         default_factory=list
     )
+    warning_messages: List[Tuple[str, str]] = dataclasses.field(default_factory=list)
     verbosity: int = 0
 
     def add_success(self, summary: str, success_type: Optional[str] = None):
@@ -111,13 +113,7 @@ class ValidatorResults:
         elif success_type == "optional":
             self.optional_success_count += 1
 
-        message = f"✔: {summary}"
-        pretty_print = print if success_type == "optional" else print_success
-
-        if self.verbosity > 0:
-            pretty_print(message)
-        elif self.verbosity == 0:
-            pretty_print(".", end="", flush=True)
+        self._print_test_success(summary, success_type=success_type)
 
     def add_failure(
         self, summary: str, message: str, failure_type: Optional[str] = None
@@ -128,11 +124,11 @@ class ValidatorResults:
         Parameters:
             summary: Short error message.
             message: Full error message, potentially containing a traceback.
-            failure_type: Either `None`, `"internal"` or `"optional"`
+            failure_type: Either `None`, `"internal"`, `"optional"` or `"warning"`
                 depending on the type of check that was failed.
 
         """
-        failure_types = (None, "internal", "optional")
+        failure_types = (None, "internal", "optional", "warning")
         if failure_type not in failure_types:
             raise RuntimeError(
                 f"`failure_type` must be one of {failure_types}, not {failure_type}."
@@ -147,22 +143,118 @@ class ValidatorResults:
         elif failure_type == "optional":
             self.optional_failure_count += 1
             self.optional_failure_messages.append((summary, message))
+        elif failure_type == "warning":
+            self.warning_count += 1
+            self.warning_messages.append((summary, message))
 
+        self._print_test_failure(summary, message, failure_type=failure_type)
+
+    def _print_test_success(
+        self, summary: str, success_type: str = None, verbosity: Optional[int] = None
+    ):
+        """Verbosity-dependent printing of a single test case success message.
+
+        Parameters:
+            summary: The message to display.
+            success_type: Either `None` or `"optional"`.
+            verbosity: If 0, do not print the summary, defaults to stored value.
+
+        """
+        if verbosity is None:
+            verbosity = self.verbosity
+
+        message = f"✔: {summary}"
+        pretty_print = print if success_type == "optional" else print_success
+
+        if self.verbosity > 0:
+            pretty_print(message)
+        elif self.verbosity == 0:
+            pretty_print(".", end="", flush=True)
+
+    def _print_test_failure(self, summary, message, failure_type=None, verbosity=None):
+        """Verbosity-dependent printing of a single test case failure message.
+
+        Parameters:
+            summary: The summary message to display.
+            message: The full error description/traceback.
+            failure_type: Either `None` or `"optional"`, `"internal"`
+                or `"warning"`.
+            verbosity: If 0, do not print the summary, defaults to
+                stored value.
+
+        """
+        if verbosity is None:
+            verbosity = self.verbosity
         pprint_types = {
             "internal": (print_notify, print_warning),
             "optional": (print, print),
+            "warning": (print_notify, print),
         }
         pprint, warning_pprint = pprint_types.get(
             failure_type, (print_failure, print_warning)
         )
 
-        symbol = "!" if failure_type == "internal" else "✖"
+        symbols = {"internal": "!", "warning": "~", "optional": "✖"}
+        symbol = symbols.get(failure_type, "✖")
         if self.verbosity == 0:
             pprint(symbol, end="", flush=True)
         elif self.verbosity > 0:
             pprint(f"{symbol}: {summary}")
             for line in message.split("\n"):
                 warning_pprint(f"\t{line}")
+
+    def print_summary(self, respond_json=False):
+        """Print a summary of the results of validation.
+
+        Parameters:
+            respond_json: If `True`, return only a JSON dump and no
+                human-readable summary.
+
+        """
+        if respond_json:
+            print(json.dumps(dataclasses.asdict(self), indent=2))
+            return
+
+        if self.failure_messages:
+            print("\n\nFAILURES")
+            print("========\n")
+            for summary, message in self.failure_messages:
+                self._print_test_failure(
+                    summary, message, failure_type=None, verbosity=10
+                )
+
+        if self.optional_failure_messages:
+            print("\n\nOPTIONAL TEST FAILURES")
+            print("======================\n")
+            for summary, message in self.optional_failure_messages:
+                self._print_test_failure(
+                    summary, message, failure_type="optional", verbosity=10
+                )
+
+        if self.internal_failure_messages:
+            print("\n\nINTERNAL FAILURES")
+            print("=================\n")
+            print(
+                "There were internal validator failures associated with this run.\n"
+                "If this problem persists, please report it at:\n"
+                "https://github.com/Materials-Consortia/optimade-python-tools/issues/new\n"
+            )
+
+            for summary, message in self.internal_failure_messages:
+                self._print_test_failure(
+                    summary, message, failure_type="internal", verbosity=10
+                )
+
+        if self.warning_messages:
+            print("\n\nWARNINGS")
+            print("========\n")
+            print(
+                "The validator raised the following warnings, usually indicating that some validation could not be performed:"
+            )
+            for summary, message in self.warning_messages:
+                self._print_test_failure(
+                    summary, message, failure_type="warning", verbosity=10
+                )
 
 
 class Client:  # pragma: no cover
@@ -252,12 +344,13 @@ class Client:  # pragma: no cover
             # If the connection failed, or returned a 429, then wait 1 second before retrying
             time.sleep(1)
 
-        else:
-            message = f"Hit max retries ({self.max_retries}) on request {self.last_request!r}."
-            if errors:
-                error_str = "\n\t".join(errors)
-                message += f"\nErrors:\n\t{error_str}"
-            raise ResponseError(message)
+        message = (
+            f"Hit max retries ({self.max_retries}) on request {self.last_request!r}."
+        )
+        if errors:
+            error_str = "\n\t".join(errors)
+            message += f"\nErrors:\n\t{error_str}"
+        raise ResponseError(message)
 
 
 def test_case(test_fn: Callable[[Any], Tuple[Any, str]]):
@@ -346,7 +439,10 @@ def test_case(test_fn: Callable[[Any], Tuple[Any, str]]):
             request = display_request
 
             # If the result was None, return it here and ignore statuses
+            # If there is an associated message, log it as a warning to display to the user
             if result is None:
+                if msg is not None:
+                    validator.results.add_failure(request, msg, failure_type="warning")
                 return result, msg
 
             if not isinstance(result, Exception):
