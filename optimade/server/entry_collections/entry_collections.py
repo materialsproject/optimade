@@ -50,6 +50,15 @@ def create_collection(
             resource_mapper=resource_mapper,
         )
 
+    if CONFIG.database_backend is SupportedBackend.ASE:
+        from optimade.server.entry_collections.ase import ASECollection
+
+        return ASECollection(
+            name=name,
+            resource_cls=resource_cls,
+            resource_mapper=resource_mapper,
+        )
+
     raise NotImplementedError(
         f"The database backend {CONFIG.database_backend!r} is not implemented"
     )

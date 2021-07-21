@@ -71,6 +71,7 @@ class SupportedBackend(Enum):
     ELASTIC = "elastic"
     MONGODB = "mongodb"
     MONGOMOCK = "mongomock"
+    ASE = "ase"
 
 
 def config_file_settings(settings: BaseSettings) -> Dict[str, Any]:
@@ -162,6 +163,9 @@ class ServerConfig(BaseSettings):
         None, description="Host settings to pass through to the `Elasticsearch` class."
     )
 
+    ase_database: str = Field(
+        "optimade", description="ASE database for collection data"
+    )
     mongo_database: str = Field(
         "optimade", description="Mongo database for collection data"
     )
