@@ -205,10 +205,11 @@ def get_base_url(
         if isinstance(parsed_url_request, str)
         else parsed_url_request
     )
+    root_path = CONFIG.root_path.rstrip("/") if CONFIG.root_path else ""
     return (
         CONFIG.base_url.rstrip("/")
         if CONFIG.base_url
-        else f"{parsed_url_request.scheme}://{parsed_url_request.netloc}"
+        else f"{parsed_url_request.scheme}://{parsed_url_request.netloc}{root_path}"
     )
 
 
@@ -239,9 +240,10 @@ def get_entries(
         query = urllib.parse.parse_qs(request.url.query)
         query["page_offset"] = int(query.get("page_offset", [0])[0]) + len(results)
         urlencoded = urllib.parse.urlencode(query, doseq=True)
-        base_url = get_base_url(request.url)
+        root_path = CONFIG.root_path.rstrip("/") if CONFIG.root_path else ""
+        url = f"{get_base_url(request.url)}{request.url.path.replace(root_path, '')}"
 
-        links = ToplevelLinks(next=f"{base_url}{request.url.path}?{urlencoded}")
+        links = ToplevelLinks(next=f"{url}?{urlencoded}")
     else:
         links = ToplevelLinks(next=None)
 

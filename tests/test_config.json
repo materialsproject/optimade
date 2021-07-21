@@ -2,6 +2,7 @@
     "debug": false,
     "default_db": "test_server",
     "base_url": "http://example.org",
+    "root_path": "custom_root_path/",
     "implementation": {
         "name": "Example implementation",
         "source_url": "https://github.com/Materials-Consortia/optimade-python-tools",

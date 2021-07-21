@@ -274,6 +274,17 @@ class ServerConfig(BaseSettings):
         res.update(v)
         return res
 
+    @validator("root_path", pre=False)
+    def remove_end_slashes(cls, value: str) -> str:
+        """Remove ending slashes from root_path"""
+        if isinstance(value, str):
+            while value.endswith("/"):
+                value = value[:-1]
+            while value.startswith("/"):
+                value = value[1:]
+            value = f"/{value}"
+        return value
+
     @root_validator(pre=True)
     def use_real_mongo_override(cls, values):
         """Overrides the `database_backend` setting with MongoDB and
